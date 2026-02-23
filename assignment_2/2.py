@@ -1,5 +1,5 @@
 import numpy as np
-import sklearn.model_selection as train_test_split
+from sklearn.model_selection import train_test_split
 
 def make_classification(d, n, u, seed):
     #Step 1. Randomly generate a d-dimensional vector ¯a.
