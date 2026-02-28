@@ -51,82 +51,38 @@ for i, d in enumerate(dimensions):
 result_dataframe = pd.DataFrame(result_list, columns=["n","d","Primal_Time","Primal_Loss", "Primal_Iter","Dual_Time","Dual_Loss", "Dual_Iter"])
 print(result_dataframe)
 
+#Time vs n for different d
+d_colors = {100: "blue", 500: "green", 800: "red"}
+n_colors = {10000: "blue", 30000: "green", 50000: "red"}
+
 plt.figure()
+
 for d in dimensions:
-    subset = result_dataframe[result_dataframe["d"] == d]
-    plt.plot(subset["n"], subset["Primal_Time"], marker='o', label=f"d={d}")
+    subset = result_dataframe[result_dataframe["d"] == d].sort_values("n")
+    
+    plt.plot(subset["n"], subset["Primal_Time"], marker='o', linestyle='-', color=d_colors[d], label=f"d={d} (Primal)")
+    plt.plot(subset["n"], subset["Dual_Time"], marker='o', linestyle='--', color=d_colors[d], label=f"d={d} (Dual)")
+
 plt.xlabel("Number of samples (n)")
 plt.ylabel("Time (seconds)")
-plt.title("Primal Time vs n for different dimensions")
+plt.title("Training Time vs n (Primal vs Dual)")
 plt.legend()
 plt.show()
 
-plt.figure()
-for d in dimensions:
-    subset = result_dataframe[result_dataframe["d"] == d]
-    plt.plot(subset["n"], subset["Dual_Time"], marker='o', label=f"d={d}")
-plt.xlabel("Number of samples (n)")
-plt.ylabel("Time (seconds)")
-plt.title("Dual Time vs n for different dimensions")
-plt.legend()
-plt.show()
 
+# Time vs d for different n
 plt.figure()
-for d in dimensions:
-    subset = result_dataframe[result_dataframe["d"] == d]
-    plt.plot(subset["n"], subset["Primal_Loss"], marker='o', label=f"d={d}")
-plt.xlabel("Number of samples (n)")
-plt.ylabel("Loss")
-plt.title("Primal Loss vs n for different dimensions")
-plt.legend()
-plt.show()
 
-plt.figure()
-for d in dimensions:
-    subset = result_dataframe[result_dataframe["d"] == d]
-    plt.plot(subset["n"], subset["Dual_Loss"], marker='o', label=f"d={d}")
-plt.xlabel("Number of samples (n)")
-plt.ylabel("Loss")
-plt.title("Dual Loss vs n for different dimensions")
-plt.legend()
-plt.show()
-
-plt.figure()
 for n in size:
-    subset = result_dataframe[result_dataframe["n"] == n]
-    plt.plot(subset["d"], subset["Primal_Time"], marker='o', label=f"n={n}")
+    subset = result_dataframe[result_dataframe["n"] == n].sort_values("d")
+    
+    # Primal
+    plt.plot(subset["d"], subset["Primal_Time"],marker='o', color=n_colors[n], linestyle='-',label=f"n={n} (Primal)")
+    # Dual
+    plt.plot(subset["d"], subset["Dual_Time"],marker='o', color=n_colors[n], linestyle='--',label=f"n={n} (Dual)")
+
 plt.xlabel("Dimension (d)")
 plt.ylabel("Time (seconds)")
-plt.title("Primal Time vs d for different sample sizes")
-plt.legend()
-plt.show()
-
-plt.figure()
-for n in size:
-    subset = result_dataframe[result_dataframe["n"] == n]
-    plt.plot(subset["d"], subset["Dual_Time"], marker='o', label=f"n={n}")
-plt.xlabel("Dimension (d)")
-plt.ylabel("Time (seconds)")
-plt.title("Dual Time vs d for different sample sizes")
-plt.legend()
-plt.show()
-
-plt.figure()
-for n in size:
-    subset = result_dataframe[result_dataframe["n"] == n]
-    plt.plot(subset["d"], subset["Primal_Loss"], marker='o', label=f"n={n}")
-plt.xlabel("Dimension (d)")
-plt.ylabel("Loss")
-plt.title("Primal Loss vs d for different sample sizes")
-plt.legend()
-plt.show()
-
-plt.figure()
-for n in size:
-    subset = result_dataframe[result_dataframe["n"] == n]
-    plt.plot(subset["d"], subset["Dual_Loss"], marker='o', label=f"n={n}")
-plt.xlabel("Dimension (d)")
-plt.ylabel("Loss")
-plt.title("Dual Loss vs d for different sample sizes")
+plt.title("Training Time vs d (Primal vs Dual)")
 plt.legend()
 plt.show()
