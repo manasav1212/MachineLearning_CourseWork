@@ -4,12 +4,15 @@ import time
 import pandas as pd
 import matplotlib.pyplot as plt
 from LinearlySeperableDataGeneration import make_classification
+from sklearn.preprocessing import StandardScaler
 
 #We are going to investigate the performance of solving primal and dual problems for linear classification. 
 def Primal_Dual_Comparison(X_train, y_train):
+    #scaler = StandardScaler()
+    #X_train = scaler.fit_transform(X_train)
     results = {}
 
-    Primal_model = LinearSVC(loss="squared_hinge", dual=False, max_iter=10000)
+    Primal_model = LinearSVC(loss="squared_hinge", dual=False, C=0.1, max_iter=30000, tol=1e-3)
     start = time.time()
     Primal_model.fit(X_train, y_train)
     Primal_time = time.time() - start
@@ -17,7 +20,7 @@ def Primal_Dual_Comparison(X_train, y_train):
     Primal_loss = hinge_loss(y_train, Primal_score)
     results["Primal"] = {"time":Primal_time, "loss":Primal_loss, "iter": Primal_model.n_iter_}
     
-    Dual_model = LinearSVC(loss="squared_hinge", dual=True, max_iter=10000)
+    Dual_model = LinearSVC(loss="squared_hinge", dual=True, C=0.1, max_iter=30000, tol=1e-3)
     start = time.time()
     Dual_model.fit(X_train, y_train)
     Dual_time = time.time() - start
@@ -84,5 +87,37 @@ for n in size:
 plt.xlabel("Dimension (d)")
 plt.ylabel("Time (seconds)")
 plt.title("Training Time vs d (Primal vs Dual)")
+plt.legend()
+plt.show()
+
+plt.figure()
+
+for d in dimensions:
+    subset = result_dataframe[result_dataframe["d"] == d].sort_values("n")
+    
+    plt.plot(subset["n"], subset["Primal_Loss"], marker='o', linestyle='-', color=d_colors[d], label=f"d={d} (Primal)")
+    plt.plot(subset["n"], subset["Dual_Loss"], marker='o', linestyle='--', color=d_colors[d], label=f"d={d} (Dual)")
+
+plt.xlabel("Number of samples (n)")
+plt.ylabel("Time (seconds)")
+plt.title("Loss vs n (Primal vs Dual)")
+plt.legend()
+plt.show()
+
+
+# Time vs d for different n
+plt.figure()
+
+for n in size:
+    subset = result_dataframe[result_dataframe["n"] == n].sort_values("d")
+    
+    # Primal
+    plt.plot(subset["d"], subset["Primal_Loss"],marker='o', color=n_colors[n], linestyle='-',label=f"n={n} (Primal)")
+    # Dual
+    plt.plot(subset["d"], subset["Dual_Loss"],marker='o', color=n_colors[n], linestyle='--',label=f"n={n} (Dual)")
+
+plt.xlabel("Dimension (d)")
+plt.ylabel("Time (seconds)")
+plt.title("Loss vs d (Primal vs Dual)")
 plt.legend()
 plt.show()
