@@ -15,15 +15,13 @@ def Primal_Dual_Comparison(X_train, y_train):
     Primal_time = time.time() - start
     Primal_score = Primal_model.decision_function(X_train)
     Primal_loss = hinge_loss(y_train, Primal_score)
-    results["Primal"] = {"time":Primal_time, "loss":Primal_loss}
     
-    Dual_model = LinearSVC(loss="hinge", dual=True, max_iter=10000)
+    Dual_model = LinearSVC(loss="squared_hinge", dual=True, max_iter=10000)
     start = time.time()
     Dual_model.fit(X_train, y_train)
     Dual_time = time.time() - start
     Dual_score = Dual_model.decision_function(X_train)
     Dual_loss = hinge_loss(y_train, Dual_score)
-    results["Dual"] = {"time":Dual_time, "loss":Dual_loss}
     
     return results
     
@@ -41,12 +39,14 @@ for i, d in enumerate(dimensions):
             "d":d,
             "Primal_Time":result["Primal"]["time"],
             "Primal_Loss":result["Primal"]["loss"],
+            "Primal_Iter":result["Primal"]["iter"],
             "Dual_Time":result["Dual"]["time"],
-            "Dual_Loss":result["Dual"]["loss"]
+            "Dual_Loss":result["Dual"]["loss"],
+            "Dual_Iter":result["Dual"]["iter"]
         }
     )
 
-result_dataframe = pd.DataFrame(result_list, columns=["n","d","Primal_Time","Primal_Loss","Dual_Time","Dual_Loss"])
+result_dataframe = pd.DataFrame(result_list, columns=["n","d","Primal_Time","Primal_Loss", "Primal_Iter","Dual_Time","Dual_Loss", "Dual_Iter"])
 print(result_dataframe)
 
 plt.figure()
