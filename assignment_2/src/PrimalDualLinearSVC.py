@@ -15,6 +15,7 @@ def Primal_Dual_Comparison(X_train, y_train):
     Primal_time = time.time() - start
     Primal_score = Primal_model.decision_function(X_train)
     Primal_loss = hinge_loss(y_train, Primal_score)
+    results["Primal"] = {"time":Primal_time, "loss":Primal_loss, "iter": Primal_model.n_iter_}
     
     Dual_model = LinearSVC(loss="squared_hinge", dual=True, max_iter=10000)
     start = time.time()
@@ -22,6 +23,7 @@ def Primal_Dual_Comparison(X_train, y_train):
     Dual_time = time.time() - start
     Dual_score = Dual_model.decision_function(X_train)
     Dual_loss = hinge_loss(y_train, Dual_score)
+    results["Dual"] = {"time":Dual_time, "loss":Dual_loss, "iter": Dual_model.n_iter_}
     
     return results
     
