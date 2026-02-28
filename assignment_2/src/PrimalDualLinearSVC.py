@@ -5,6 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from LinearlySeperableDataGeneration import make_classification
 from sklearn.preprocessing import StandardScaler
+from lib import load_dataset
 
 #We are going to investigate the performance of solving primal and dual problems for linear classification. 
 def Primal_Dual_Comparison(X_train, y_train):
@@ -36,7 +37,8 @@ size = [10000, 30000, 50000]
 result_list = []
 for i, d in enumerate(dimensions):
     for j, n in enumerate(size):
-        X_train, X_test, y_train, y_test, a = make_classification(d, n, 100, 7)
+        # X_train, X_test, y_train, y_test, a = make_classification(d, n, 100, 7)
+        X_train, X_test, y_train, y_test = load_dataset(d, n)
         result = Primal_Dual_Comparison(X_train, y_train)
         result_list.append(
         {

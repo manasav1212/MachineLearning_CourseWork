@@ -1,5 +1,8 @@
 import numpy as np
 from sklearn.model_selection import train_test_split
+from itertools import product
+import pandas as pd
+import os
 
 def make_classification(d, n, u, seed):
     #Step 1. Randomly generate a d-dimensional vector ¯a.
@@ -15,6 +18,43 @@ def make_classification(d, n, u, seed):
     
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.3, random_state = seed)
     return X_train, X_test, y_train, y_test, a
+
+
+def generate_and_save_dataset(dimensions, size):
+
+    for n,d in product(dimensions, size):
+        X_train, X_test, y_train, y_test, a = make_classification(d, n, 100, 7)
+        df_train = pd.DataFrame(X_train)
+        df_train['label'] = y_train
+
+        df_test = pd.DataFrame(X_test)
+        df_test['label'] = y_test
+
+        df_train.to_csv(f'../data/train_{n}_{d}.csv')
+        df_test.to_csv(f'../data/test_{n}_{d}.csv')
+
+
+def load_dataset(dimension, size):
+    
+    train_path = f"../data/train_{dimension}_{size}.csv"
+    test_path = f"../data/test_{dimension}_{size}.csv"
+    
+    if not os.path.exists(train_path):
+        raise FileNotFoundError(f"Training file not found: {train_path}")
+        
+    if not os.path.exists(test_path):
+        raise FileNotFoundError(f"Test file not found: {test_path}")
+    
+    df_train = pd.read_csv(train_path, index_col=0)
+    df_test = pd.read_csv(test_path, index_col=0)
+    
+    X_train = df_train.drop(columns=["label"]).values
+    y_train = df_train["label"].values
+    
+    X_test = df_test.drop(columns=["label"]).values
+    y_test = df_test["label"].values
+    
+    return X_train, X_test, y_train, y_test
 
 class LinearSVC:
 
