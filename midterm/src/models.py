@@ -1,6 +1,9 @@
 
 from sklearn.metrics import confusion_matrix
 from sklearn.svm import SVC
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 
 import idx2numpy
 import time
@@ -15,6 +18,10 @@ def load_MINST_dataset(path):
 def flatten_images(train_data, test_data):
     return train_data.reshape(train_data.shape[0], -1), test_data.reshape(test_data.shape[0], -1)
 
+def standardize_data(X_train, X_test):
+    scaler = StandardScaler()
+    return scaler.fit_transform(X_train), scaler.transform(X_test)
+
 def time_fxn(iter, fxn, *args, **kwargs):
     start = time.perf_counter()
     result = None
@@ -22,6 +29,19 @@ def time_fxn(iter, fxn, *args, **kwargs):
         result = fxn(*args, **kwargs)
     t = (time.perf_counter() - start)/iter
     return result, t
+
+def apply_pca(X_train, X_test, n_components):
+    pca = PCA(n_components=n_components)
+    X_train_red = pca.fit_transform(X_train)
+    X_test_red = pca.transform(X_test)
+    return X_train_red, X_test_red, pca
+
+
+def apply_lda(X_train, X_test, y_train, n_components):
+    lda = LinearDiscriminantAnalysis(n_components=n_components)
+    X_train_red = lda.fit_transform(X_train, y_train)
+    X_test_red = lda.transform(X_test)
+    return X_train_red, X_test_red, lda
 
 class BaseSvc:
 
@@ -62,3 +82,17 @@ class PolynomialSvc(BaseSvc):
         self.degree = degree
         self.model = SVC(kernel='poly', C = self.C, gamma= self.gamma, max_iter = max_iter, random_state= random_state,
                           degree= self.degree)
+
+def evaluate_model(model : BaseSvc, X_train, y_train, X_test, y_test):
+    train_time = model.train(X_train, y_train)
+    
+    train_acc, train_cm = model.evaluate(X_train, y_train)
+    test_acc, test_cm = model.evaluate(X_test, y_test)
+    
+    return {
+        "train_time": train_time,
+        "train_error": 1 - train_acc,
+        "test_error": 1 - test_acc,
+        "train_cm": train_cm,
+        "test_cm": test_cm
+    }
