@@ -91,8 +91,22 @@ def evaluate_model(model : BaseSvc, X_train, y_train, X_test, y_test):
     
     return {
         "train_time": train_time,
-        "train_error": 1 - train_acc,
-        "test_error": 1 - test_acc,
-        "train_cm": train_cm,
-        "test_cm": test_cm
+        "train_acc": float(train_acc),
+        "test_acc": float(test_acc),
+        # "train_cm": train_cm,
+        # "test_cm": test_cm
+    }
+
+def evaluate_pipeline(pipeline, X_train, y_train, X_test, y_test):
+    start = time.perf_counter()
+    pipeline.fit(X_train, y_train)
+    train_time = time.perf_counter() - start
+
+    train_acc = pipeline.score(X_train, y_train)
+    test_acc = pipeline.score(X_test, y_test)
+
+    return {
+        "train_time": train_time,
+        "train_acc": train_acc,
+        "test_acc": test_acc
     }
