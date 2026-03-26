@@ -18,6 +18,11 @@ def load_MINST_dataset(path):
 def flatten_images(train_data, test_data):
     return train_data.reshape(train_data.shape[0], -1), test_data.reshape(test_data.shape[0], -1)
 
+def load_flattened_dataset(path):
+    train_data, train_label, test_data, test_label = load_MINST_dataset(path)
+    train_data, test_data = flatten_images(train_data, test_data)
+    return train_data, train_label, test_data, test_label
+
 def standardize_data(X_train, X_test):
     scaler = StandardScaler()
     return scaler.fit_transform(X_train), scaler.transform(X_test)
