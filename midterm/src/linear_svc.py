@@ -51,49 +51,6 @@ def plot_pipeline_results(result, title):
 
     return result, table
 
-def tune_linear_svc(X_train, y_train, x_test, y_test, c_options, title, train_size = 5000):
-    if train_size == 1:
-        X_tune, y_tune = X_train, y_train
-    else:
-        X_tune, _, y_tune, _ = train_test_split(
-            X_train, 
-            y_train, 
-            train_size=train_size, 
-            stratify=y_train,
-            random_state=42
-        )
-    result = {}
-
-    for c in c_options:
-        model = LinearSvc(c, max_iter = -1)
-        result[c] = evaluate_model(model, X_tune, y_tune, x_test, y_test)
-
-    x = list(result.keys())
-    train_time = [result[k]['train_time'] for k in x]
-    train_acc = [result[k]['train_acc'] for k in x]
-    test_acc = [result[k]['test_acc'] for k in x]
-
-    plt.figure(figsize=(6.5, 4.5))
-
-    # Accuracy
-    plt.plot(x, train_acc, marker='o', label='Train Accuracy', color='blue')
-    plt.plot(x, test_acc, marker='s', label='Test Accuracy', color='green')
-    plt.xscale('log')
-    plt.xlabel('Hyperparameter (C)')
-    plt.ylabel('Accuracy')
-    plt.title(f'Training and Test Accuracy ({title})')
-    plt.legend()
-    plt.grid(True, which="both", ls="--", alpha=0.5)
-
-    plt.tight_layout()
-    plt.show()
-
-    table = pd.DataFrame(result).T
-    table = table[['train_acc', 'test_acc']].copy()
-    table.columns = ['Training Accuracy', 'Test Accuracy']
-
-    return result, table
-
 # Experiments
 path = "../data/MNIST"
 X_train, y_train, X_test, y_test = load_flattened_dataset(path) 
