@@ -9,10 +9,10 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 import pandas as pd
 
-def create_pipeline(model):
+def create_pipeline(dim_reduction, model):
     return Pipeline([
         ('standardization', StandardScaler()),
-        ('reduce_dim', PCA(n_components=200, random_state=42)),
+        ('reduce_dim', dim_reduction),
         ('classifier', model)
     ], verbose=False)
 
@@ -40,17 +40,17 @@ num_models = 9
 X_subset, y_subset = split_data(9, X_train, y_train)
 
 ensembled_models_mnist = [
-    create_pipeline(SVC(kernel='linear', C = 0.1, random_state=7)),
-    create_pipeline(SVC(kernel='linear', C = 0.1, random_state=7)),
-    create_pipeline(SVC(kernel='linear', C = 0.1, random_state=7)),
+    create_pipeline(PCA(n_components=50), SVC(kernel='linear', C = 0.1, random_state=7)),
+    create_pipeline(PCA(n_components=100), SVC(kernel='linear', C = 0.1, random_state=7)),
+    create_pipeline(PCA(n_components=200), SVC(kernel='linear', C = 0.1, random_state=7)),
 
-    create_pipeline(SVC(kernel='rbf', C = 100, gamma=0.001, random_state=7)),
-    create_pipeline(SVC(kernel='rbf', C = 100, gamma=0.001, random_state=7)),
-    create_pipeline(SVC(kernel='rbf', C = 100, gamma=0.001, random_state=7)),
+    create_pipeline(PCA(n_components=50), SVC(kernel='rbf', C = 100, gamma=0.001, random_state=7)),
+    create_pipeline(PCA(n_components=100), SVC(kernel='rbf', C = 100, gamma=0.001, random_state=7)),
+    create_pipeline(PCA(n_components=200), SVC(kernel='rbf', C = 100, gamma=0.001, random_state=7)),
 
-    create_pipeline(SVC(kernel='poly', C = 100, gamma=0.0005, degree = 2, random_state=7)),
-    create_pipeline(SVC(kernel='poly', C = 100, gamma=0.0005, degree = 2, random_state=7)),
-    create_pipeline(SVC(kernel='poly', C = 100, gamma=0.0005, degree = 2, random_state=7))
+    create_pipeline(PCA(n_components=50), SVC(kernel='poly', C = 100, gamma=0.0005, degree = 2, random_state=7)),
+    create_pipeline(PCA(n_components=100), SVC(kernel='poly', C = 100, gamma=0.0005, degree = 2, random_state=7)),
+    create_pipeline(PCA(n_components=200), SVC(kernel='poly', C = 100, gamma=0.0005, degree = 2, random_state=7))
 ]
 # Train all the models
 start = time.perf_counter()
