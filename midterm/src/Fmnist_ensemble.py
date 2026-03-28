@@ -1,8 +1,7 @@
-from models import *
+from lib import *
 
 path = "../data/Fashion-MNIST"
-X_train, y_train, X_test, y_test = load_MINST_dataset(path)
-X_train, X_test = flatten_images(X_train, X_test)
+X_train, y_train, X_test, y_test = load_flattened_dataset(path)
 
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -39,7 +38,7 @@ def split_data(num, X_train, y_train):
 num_models = 9
 X_subset, y_subset = split_data(9, X_train, y_train)
 
-ensembled_models_mnist = [
+ensembled_models_fmnist = [
     create_pipeline(PCA(n_components=50), SVC(kernel='linear', C = 0.1, random_state=7)),
     create_pipeline(PCA(n_components=100), SVC(kernel='linear', C = 0.01, random_state=7)),
     create_pipeline(PCA(n_components=200), SVC(kernel='linear', C = 0.01, random_state=7)),
@@ -54,11 +53,11 @@ ensembled_models_mnist = [
 ]
 # Train all the models
 start = time.perf_counter()
-for i, model in enumerate(ensembled_models_mnist):
+for i, model in enumerate(ensembled_models_fmnist):
     model.fit(X_subset[i], y_subset[i])
 training_time = time.perf_counter() - start
 print(f"Training time: {training_time} s")
-accuracy = predict_and_evaluate(ensembled_models_mnist, X_test, y_test)
+accuracy = predict_and_evaluate(ensembled_models_fmnist, X_test, y_test)
 print(f'Accuracy: {accuracy}, Error: {1 - accuracy}')
 
 

@@ -1,59 +1,7 @@
-from models import *
+from lib import *
 
 path = "../data/Fashion-MNIST"
-X_train, y_train, X_test, y_test = load_MINST_dataset(path)
-X_train, X_test = flatten_images(X_train, X_test)
-
-from sklearn.pipeline import Pipeline
-import matplotlib.pyplot as plt
-import pandas as pd
-
-def tune_linear_pipeline(X_train, y_train, X_test, y_test, c_options, dim_reduction=None):
-    results = {}
-    
-    for c in c_options:
-        if dim_reduction is None:
-            pipeline = Pipeline([
-                ('scaler', TimedTask(StandardScaler())),
-                ('svc', TimedTask(SVC(kernel='linear', C=c, random_state=42)))
-            ], verbose=True)
-        else:
-            pipeline = Pipeline([
-                ('scaler', TimedTask(StandardScaler())),
-                ('reduce_dim', TimedTask(dim_reduction)),
-                ('svc', TimedTask(SVC(kernel='linear', C=c, random_state=42)))
-            ], verbose=True)
-        print(f"Training Linear SVC with C={c}...")
-        results[c] = evaluate_pipeline(pipeline, X_train, y_train, X_test, y_test)
-        
-    return results
-
-def plot_pipeline_results(result, title):
-    x = list(result.keys())
-    train_time = [result[k]['train_time'] for k in x]
-    train_acc = [result[k]['train_acc'] for k in x]
-    test_acc = [result[k]['test_acc'] for k in x]
-
-    plt.figure(figsize=(6.5, 4.5))
-
-    # Accuracy
-    plt.plot(x, train_acc, marker='o', label='Train Accuracy', color='blue')
-    plt.plot(x, test_acc, marker='s', label='Test Accuracy', color='green')
-    plt.xscale('log')
-    plt.xlabel('Hyperparameter (C)')
-    plt.ylabel('Accuracy')
-    plt.title(f'Training and Test Accuracy ({title})')
-    plt.legend()
-    plt.grid(True, which="both", ls="--", alpha=0.5)
-
-    plt.tight_layout()
-    plt.show()
-
-    table = pd.DataFrame(result).T
-    table = table[['train_time', 'train_acc', 'test_acc', 'step_times']].copy()
-    table.columns = ['Training Time','Training Accuracy', 'Test Accuracy', 'Step Times']
-
-    return result, table
+X_train, y_train, X_test, y_test = load_flattened_dataset(path)
 
 c_options = [0.001, 0.01, 0.1, 1]
 results = tune_linear_pipeline(X_train, y_train, X_test, y_test, c_options)

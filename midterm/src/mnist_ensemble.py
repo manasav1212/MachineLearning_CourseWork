@@ -1,5 +1,5 @@
 import numpy as np
-from models import *
+from lib import *
 import time
 
 # Load Dataset
