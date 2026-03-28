@@ -10,14 +10,14 @@ def tune_linear_pipeline(X_train, y_train, X_test, y_test, c_options, dim_reduct
     for c in c_options:
         if dim_reduction is None:
             pipeline = Pipeline([
-                ('scaler', StandardScaler()),
-                ('svc', SVC(kernel='linear', C=c, random_state=42))
+                ('scaler', TimedTask(StandardScaler())),
+                ('svc', TimedTask(SVC(kernel='linear', C=c, random_state=42)))
             ], verbose=True)
         else:
             pipeline = Pipeline([
-                ('scaler', StandardScaler()),
-                ('reduce_dim', dim_reduction),
-                ('svc', SVC(kernel='linear', C=c, random_state=42))
+                ('scaler', TimedTask(StandardScaler())),
+                ('reduce_dim', TimedTask(dim_reduction)),
+                ('svc', TimedTask(SVC(kernel='linear', C=c, random_state=42)))
             ], verbose=True)
         print(f"Training Linear SVC with C={c}...")
         results[c] = evaluate_pipeline(pipeline, X_train, y_train, X_test, y_test)
@@ -46,8 +46,8 @@ def plot_pipeline_results(result, title):
     plt.show()
 
     table = pd.DataFrame(result).T
-    table = table[['train_time', 'train_acc', 'test_acc']].copy()
-    table.columns = ['Training Time','Training Accuracy', 'Test Accuracy']
+    table = table[['train_time', 'train_acc', 'test_acc', 'step_times']].copy()
+    table.columns = ['Training Time','Training Accuracy', 'Test Accuracy', 'Step Times']
 
     return result, table
 

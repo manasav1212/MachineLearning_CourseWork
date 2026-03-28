@@ -110,8 +110,48 @@ def evaluate_pipeline(pipeline, X_train, y_train, X_test, y_test):
     train_acc = pipeline.score(X_train, y_train)
     test_acc = pipeline.score(X_test, y_test)
 
+    step_times = {}
+    for name, step in pipeline.named_steps.items():
+        if hasattr(step, "training_time"):
+            step_times[name] = step.training_time
+
     return {
         "train_time": train_time,
         "train_acc": train_acc,
-        "test_acc": test_acc
+        "test_acc": test_acc,
+        "step_times": step_times
     }
+
+from sklearn.base import BaseEstimator, TransformerMixin
+
+# Wrapper to save training time of each pipeline steps
+class TimedTask(BaseEstimator, TransformerMixin):
+
+    def __init__(self, task, name=None):
+        self.task = task
+        self.name = name
+
+    def fit(self, X, y=None):
+        start = time.perf_counter()
+        # Need this for internal fit tracking
+        self.model_ = self.task
+        self.model_.fit(X, y)
+        self.training_time = time.perf_counter() - start
+        return self
+
+    def transform(self, X):
+        return self.model_.transform(X)
+
+    def fit_transform(self, X, y=None):
+        start = time.perf_counter()
+        # Need this for internal fit tracking
+        self.model_ = self.task
+        m = self.model_.fit_transform(X, y)
+        self.training_time = time.perf_counter() - start
+        return m
+
+    def predict(self, X):
+        return self.model_.predict(X)
+
+    def score(self, X, y):
+        return self.model_.score(X, y)
