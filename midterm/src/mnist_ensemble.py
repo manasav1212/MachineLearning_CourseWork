@@ -44,17 +44,17 @@ num_models = 9
 X_subset, y_subset = split_data(9, X_train, y_train)
 
 ensembled_models_mnist = [
-    create_pipeline(PCA(n_components=50), SVC(kernel='linear', C = 0.01, random_state=7)),
+    create_pipeline(PCA(n_components=50), SVC(kernel='linear', C = 1, random_state=7)),
     create_pipeline(PCA(n_components=100), SVC(kernel='linear', C = 0.01, random_state=7)),
     create_pipeline(PCA(n_components=100), SVC(kernel='linear', C = 0.01, random_state=7)),
 
-    create_pipeline(PCA(n_components=50), SVC(kernel='rbf', C = 40, gamma=0.001, random_state=7)),
-    create_pipeline(PCA(n_components=100), SVC(kernel='rbf', C = 40, gamma=0.001, random_state=7)),
+    create_pipeline(PCA(n_components=50), SVC(kernel='rbf', C = 10, gamma=0.001, random_state=7)),
+    create_pipeline(PCA(n_components=100), SVC(kernel='rbf', C = 50, gamma=0.001, random_state=7)),
     create_pipeline(PCA(n_components=200), SVC(kernel='rbf', C = 40, gamma=0.001, random_state=7)),
 
-    create_pipeline(PCA(n_components=50), SVC(kernel='poly', C = 30 , gamma=0.001, degree = 3, random_state=7)),
-    create_pipeline(PCA(n_components=100), SVC(kernel='poly', C = 30 , gamma=0.001, degree = 3, random_state=7)),
-    create_pipeline(PCA(n_components=200), SVC(kernel='poly', C = 30 , gamma=0.001, degree = 3, random_state=7))
+    create_pipeline(PCA(n_components=50), SVC(kernel='poly', C = 30 , gamma=0.001, degree = 2, random_state=7)),
+    create_pipeline(PCA(n_components=100), SVC(kernel='poly', C = 30 , gamma=0.001, degree = 2, random_state=7)),
+    create_pipeline(PCA(n_components=200), SVC(kernel='poly', C = 0.1 , gamma=0.01, degree = 2, random_state=7))
 ]
 # Train all the models
 start = time.perf_counter()
