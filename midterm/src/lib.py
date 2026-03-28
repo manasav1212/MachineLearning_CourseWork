@@ -29,6 +29,7 @@ def load_flattened_dataset(path):
     train_data, test_data = flatten_images(train_data, test_data)
     return train_data, train_label, test_data, test_label
 
+# For inital experimentation
 def standardize_data(X_train, X_test):
     scaler = StandardScaler()
     return scaler.fit_transform(X_train), scaler.transform(X_test)
@@ -41,19 +42,21 @@ def time_fxn(iter, fxn, *args, **kwargs):
     t = (time.perf_counter() - start)/iter
     return result, t
 
+# For inital experimentation
 def apply_pca(X_train, X_test, n_components):
     pca = PCA(n_components=n_components)
     X_train_red = pca.fit_transform(X_train)
     X_test_red = pca.transform(X_test)
     return X_train_red, X_test_red, pca
 
-
+# For inital experimentation
 def apply_lda(X_train, X_test, y_train, n_components):
     lda = LinearDiscriminantAnalysis(n_components=n_components)
     X_train_red = lda.fit_transform(X_train, y_train)
     X_test_red = lda.transform(X_test)
     return X_train_red, X_test_red, lda
 
+# For inital experimentation
 class BaseSvc:
 
     def train(self, X, y):
@@ -69,6 +72,7 @@ class BaseSvc:
         cm = confusion_matrix(y_true, y_pred)
         return accuracy, cm
 
+# For inital experimentation
 class LinearSvc(BaseSvc):
 
     def __init__(self, C, max_iter=1000, random_state = 42):
@@ -76,6 +80,7 @@ class LinearSvc(BaseSvc):
         self.C = C
         self.model = SVC(kernel='linear', C = self.C, max_iter = max_iter, random_state = random_state)
 
+# For inital experimentation
 class RbfSvc(BaseSvc):
 
     def __init__(self, C, gamma = 'scale', max_iter=1000, random_state = 42):
@@ -84,6 +89,7 @@ class RbfSvc(BaseSvc):
         self.gamma = gamma
         self.model = SVC(kernel='rbf', C = self.C, gamma= self.gamma, max_iter = max_iter, random_state= random_state)
 
+# For inital experimentation
 class PolynomialSvc(BaseSvc):
 
     def __init__(self, C, degree, gamma = 'scale', max_iter=1000, random_state = 42):
@@ -94,6 +100,7 @@ class PolynomialSvc(BaseSvc):
         self.model = SVC(kernel='poly', C = self.C, gamma= self.gamma, max_iter = max_iter, random_state= random_state,
                           degree= self.degree)
 
+# For inital experimentation
 def evaluate_model(model : BaseSvc, X_train, y_train, X_test, y_test):
     train_time = model.train(X_train, y_train)
     
