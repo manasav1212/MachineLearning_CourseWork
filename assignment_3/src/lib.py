@@ -55,18 +55,22 @@ class NeuralNet(torch.nn.Module):
 
     def __init__(self, input_size):
         super().__init__()
-        self.fc1 = torch.nn.Linear(input_size, 256)
-        self.fc2 = torch.nn.Linear(256, 256)
-        self.fc3 = torch.nn.Linear(256, 256)
-        self.fc4 = torch.nn.Linear(256, 64)
+        self.fc1 = torch.nn.Linear(input_size, 64)
+        self.fc2 = torch.nn.Linear(64, 64)
+        # self.fc3 = torch.nn.Linear(64, 64)
+        # self.dropout = torch.nn.Dropout(0.5)
         self.output = torch.nn.Linear(64, 1)
     
     def forward(self, X):
         X = self.fc1(X)
         X = torch.nn.functional.relu(X)
+        # X = self.dropout(X)
         X = torch.nn.functional.relu(self.fc2(X))
-        X = torch.nn.functional.relu(self.fc3(X))
-        X = torch.nn.functional.relu(self.fc4(X))
+        # X = self.dropout(X)
+        # X = torch.nn.functional.relu(self.fc3(X))
+        # X = self.dropout(X)
+        # X = torch.nn.functional.relu(self.fc4(X))
+        # X = self.dropout(X)
         return self.output(X)
     
 def train_model(model, optimizer, data_loader, epochs = 5):
