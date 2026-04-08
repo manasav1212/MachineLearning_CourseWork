@@ -96,26 +96,35 @@ class NeuralNetWithDropout(torch.nn.Module):
         return self.output(X)
 
 class DynamicNeuralNet(torch.nn.Module):
-    def __init__(self, input_size, hidden_layers, dropout_rates):
+    def __init__(self, input_size, hidden_layers, dropout_rates=None):
         super().__init__()
         self.layers = torch.nn.ModuleList() 
-        self.dropouts = torch.nn.ModuleList()
         current_dim = input_size
+        self.use_dropout = dropout_rates is not None
+        if (self.use_dropout):
+            assert len(hidden_layers) == len(dropout_rates), "Length mismatch"
+            self.dropouts = torch.nn.ModuleList()
 
         for i in range(len(hidden_layers)):
             self.layers.append(torch.nn.Linear(current_dim, hidden_layers[i]))
             
-            self.dropouts.append(torch.nn.Dropout(dropout_rates[i]))
+            if self.use_dropout:
+                self.dropouts.append(torch.nn.Dropout(dropout_rates[i]))
             
             current_dim = hidden_layers[i]
 
         self.output = torch.nn.Linear(current_dim, 1)
         
     def forward(self, X):
-        for layer, dropout in zip(self.layers, self.dropouts):
-            X = layer(X)
-            X = torch.nn.functional.relu(X)
-            X = dropout(X)
+        if self.use_dropout:
+            for layer, dropout in zip(self.layers, self.dropouts):
+                X = layer(X)
+                X = torch.nn.functional.relu(X)
+                X = dropout(X)
+        else:
+            for layer in self.layers:
+                X = layer(X)
+                X = torch.nn.functional.relu(X)
             
         return self.output(X)
     
