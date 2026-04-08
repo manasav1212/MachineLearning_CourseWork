@@ -73,6 +73,52 @@ class NeuralNet(torch.nn.Module):
         # X = self.dropout(X)
         return self.output(X)
     
+class NeuralNetWithDropout(torch.nn.Module):
+
+    def __init__(self, input_size, dropout_rate):
+        super().__init__()
+        self.fc1 = torch.nn.Linear(input_size, 64)
+        self.fc2 = torch.nn.Linear(64, 64)
+        self.fc3 = torch.nn.Linear(64, 64)
+        self.dropout1 = torch.nn.Dropout(dropout_rate[0])
+        self.dropout2 = torch.nn.Dropout(dropout_rate[1])
+        self.dropout3 = torch.nn.Dropout(dropout_rate[2])
+        self.output = torch.nn.Linear(64, 1)
+
+    def forward(self, X):
+        X = self.fc1(X)
+        X = torch.nn.functional.relu(X)
+        X = self.dropout1(X)
+        X = torch.nn.functional.relu(self.fc2(X))
+        X = self.dropout2(X)
+        X = torch.nn.functional.relu(self.fc3(X))
+        X = self.dropout3(X)
+        return self.output(X)
+
+class DynamicNeuralNet(torch.nn.Module):
+    def __init__(self, input_size, hidden_layers, dropout_rates):
+        super().__init__()
+        self.layers = torch.nn.ModuleList() 
+        self.dropouts = torch.nn.ModuleList()
+        current_dim = input_size
+
+        for i in range(len(hidden_layers)):
+            self.layers.append(torch.nn.Linear(current_dim, hidden_layers[i]))
+            
+            self.dropouts.append(torch.nn.Dropout(dropout_rates[i]))
+            
+            current_dim = hidden_layers[i]
+
+        self.output = torch.nn.Linear(current_dim, 1)
+        
+    def forward(self, X):
+        for layer, dropout in zip(self.layers, self.dropouts):
+            X = layer(X)
+            X = torch.nn.functional.relu(X)
+            X = dropout(X)
+            
+        return self.output(X)
+    
 def train_model(model, optimizer, data_loader, epochs = 5):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # device = torch.device("cpu")
@@ -95,7 +141,7 @@ def train_model(model, optimizer, data_loader, epochs = 5):
     print(f'Train time = {time.perf_counter() - start} sec')
     return model
 
-def evaluate_model(model, data_loader):
+def evaluate_model(model, data_loader, title = 'Test'):
     model.eval()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     correct = 0
@@ -115,4 +161,4 @@ def evaluate_model(model, data_loader):
                 total += X_batch.shape[0]
 
     accuracy = correct / total
-    print("Test Accuracy:", accuracy)
+    print(f"{title} Accuracy:", accuracy)
