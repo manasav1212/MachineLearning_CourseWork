@@ -3,6 +3,9 @@ import pandas as pd
 
 import torch
 from torch.utils.data import Dataset
+    
+import scipy.sparse
+import time
 
 class JointDataset(Dataset):
     def __init__(self, x, y):
@@ -37,9 +40,6 @@ class JointSparseDataset(Dataset):
         for x,y in zip(self.x, self.y):
              'x: ' + str(x) + '\t' + 'y: ' + str(y) + '\n'
         return result
-    
-import scipy.sparse
-import time
 
 def sparse_collate(batch):
     
@@ -57,20 +57,13 @@ class NeuralNet(torch.nn.Module):
         super().__init__()
         self.fc1 = torch.nn.Linear(input_size, 64)
         self.fc2 = torch.nn.Linear(64, 64)
-        # self.fc3 = torch.nn.Linear(64, 64)
-        # self.dropout = torch.nn.Dropout(0.5)
         self.output = torch.nn.Linear(64, 1)
     
     def forward(self, X):
         X = self.fc1(X)
         X = torch.nn.functional.relu(X)
-        # X = self.dropout(X)
         X = torch.nn.functional.relu(self.fc2(X))
-        # X = self.dropout(X)
-        # X = torch.nn.functional.relu(self.fc3(X))
-        # X = self.dropout(X)
-        # X = torch.nn.functional.relu(self.fc4(X))
-        # X = self.dropout(X)
+
         return self.output(X)
     
 class NeuralNetWithDropout(torch.nn.Module):
