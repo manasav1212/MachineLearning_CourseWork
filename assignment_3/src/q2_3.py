@@ -48,3 +48,31 @@ for layer in layers:
         decay_results.append(decay)
 res = pd.DataFrame({"hidden_layers": layer_results, "decay": decay_results, "accuracy": accuracy, "train_accuracy": train_accuracy})
 print(res)
+
+# Figurin out the number of epochs for training
+seed_everything(42)
+baseline_model = DynamicNeuralNet(input_shape, [32, 32, 32] )
+optimizer = torch.optim.Adam(baseline_model.parameters(), lr = 1e-4, weight_decay= 1e-5)
+_, history = train_model2(baseline_model, optimizer, train_loader, test_loader, 20)
+
+# PLotting the training and validation loss curves
+import matplotlib.pyplot as plt
+plt.figure(figsize=(8, 6))
+    
+# Plot training loss
+plt.plot(history['train_loss'], label='Training Loss', color='blue', marker='o')
+
+# Plot validation loss if it exists
+if len(history['val_loss']) > 0:
+    plt.plot(history['val_loss'], label='Validation Loss', color='orange', marker='s')
+    
+plt.title("Baseline Model Loss Curves")
+plt.xlabel('Epoch')
+plt.ylabel('Loss (BCEWithLogits)')
+
+# Ensure x-axis only shows integer epoch numbers
+plt.xticks(range(len(history['train_loss']))) 
+
+plt.legend()
+plt.grid(True, linestyle='--', alpha=0.7)
+plt.show()
