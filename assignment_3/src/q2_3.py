@@ -28,7 +28,7 @@ test_loader = DataLoader(JointDataset(X_test, y_test), batch_size=64, shuffle=Fa
 input_shape = X_train.shape[1]
 #  Baseline model tuning
 decays = [1e-5,1e-4,5e-4,5e-5, 1e-6]
-layers = [[32,32,32],[64,64,64],[32,32,32,32]]
+layers = [[32,32,32],[64,64,64],[32,32,32,32],[64,64,64,64]]
 accuracy = []
 train_accuracy = []
 layer_results = []
