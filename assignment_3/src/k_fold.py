@@ -37,7 +37,7 @@ class reviewDataset(Dataset):
         return self.x[idx], self.y[idx]
 
 k_folds = 5
-num_epochs = 1
+num_epochs = 5
 loss_function = nn.CrossEntropyLoss()
 kfold = KFold(n_splits=k_folds, shuffle=True)
 test_accuracy = []
@@ -70,8 +70,6 @@ def run_kfold():
         
         input_shape = X_train.shape[1]
         network = NeuralNet(input_shape)
-        #layer = [32,32,32]
-        #network = DynamicNeuralNet(input_shape, layer)
         
         optimizer = torch.optim.Adam(network.parameters(), lr=1e-4, weight_decay=0.00001)
         

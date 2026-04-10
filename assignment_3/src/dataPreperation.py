@@ -1,8 +1,3 @@
-# You are required to download and transform the text reviews to term frequency-inverse document frequency (tf-idf) vectors. 
-# You may use the approach and the programs in the textbook
-# to do so. Make sure that all text reviews are cleaned and correctly transformed. You may use 70% data as
-# training data and the rest as test data.
-
 import numpy as np
 import pandas as pd
 import os
@@ -33,25 +28,19 @@ for s in ('test', 'train'):
              with open(os.path.join(path, file), 'r', encoding='utf-8') as infile:
                  txt = infile.read()
              rows.append([txt, labels[l]])
-             #df = df.append([[txt, labels[l]]], ignore_index=True)
-             #df = pd.concat([df, pd.DataFrame([[txt, labels[l]]], columns=df.columns)], ignore_index=True)
 df = pd.DataFrame(rows, columns=['review', 'sentiment'])
-# df.columns = ['review', 'sentiment']
 
 np.random.seed(0)
 df = df.reindex(np.random.permutation(df.index))
 df.to_csv('movie_data.csv', index=False, encoding='utf-8')
 
 df = pd.read_csv('movie_data.csv', encoding='utf-8')
-#df = df.rename(columns={"0": "review", "1": "sentiment"})
-df.shape
 
-#text = df['review']
 df['clean_text'] = df['review'].apply(preprocessor)
+df.to_csv('clean_movie_data.csv', index=False, encoding='utf-8')
 
 tfidf = TfidfTransformer(use_idf=True, norm='l2', smooth_idf=True)
 np.set_printoptions(precision=2)
-#transformed_text = tfidf.fit_transform(count.fit_transform(clean_text))
 transformed_text = tfidf.fit_transform(count.fit_transform(df['clean_text']))
 
 X_train, X_test, y_train, y_test = train_test_split(transformed_text, df['sentiment'], test_size = 0.3, random_state = 42)
