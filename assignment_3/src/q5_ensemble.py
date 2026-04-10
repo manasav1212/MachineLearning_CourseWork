@@ -25,6 +25,7 @@ X_test = tfidf.transform(X_test)
 
 dataset = JointDataset(X_train, y_train)
 test_loader = DataLoader(JointDataset(X_test, y_test), batch_size=64, shuffle=False)
+train_loader = DataLoader(dataset, batch_size=64, shuffle=False)
 
 total = len(dataset)
 data_loader = []
@@ -54,7 +55,8 @@ for i in range(num_of_models):
     optimizer = torch.optim.Adam(models[i].parameters(), lr = 1e-4)
     models[i] = train_model(models[i], optimizer, data_loaders[i])
 epoch_5_time= time.perf_counter() - start
-epoch_5_accuracy = evaluate_ensembled_models(models, test_loader, "Bagging ensemble")
+epoch_5_test_accuracy = evaluate_ensembled_models(models, test_loader, "Bagging ensemble")
+epoch_5_train_accuracy = evaluate_ensembled_models(models, train_loader, "Bagging ensemble")
 
 start = time.perf_counter()
 for i in range(num_of_models):
@@ -62,12 +64,13 @@ for i in range(num_of_models):
     optimizer = torch.optim.Adam(models[i].parameters(), lr = 1e-4)
     models[i] = train_model(models[i], optimizer, data_loaders[i], 20)
 epoch_20_time= time.perf_counter() - start
-epoch_20_accuracy = evaluate_ensembled_models(models, test_loader, "Bagging ensemble")
+epoch_20_test_accuracy = evaluate_ensembled_models(models, test_loader, "Bagging ensemble")
+epoch_20_train_accuracy = evaluate_ensembled_models(models, train_loader, "Bagging ensemble")
 
 
 print(f"Total training time for 5 epochs = {epoch_5_time} sec")
 print(f"Total training time for 20 epochs = {epoch_20_time} sec")
-print(f"Accuracy for 5 epochs = {epoch_5_accuracy}")
-print(f"Accuracy for 20 epochs = {epoch_20_accuracy}")
-
- 
+print(f"Test Accuracy for 5 epochs = {epoch_5_test_accuracy}")
+print(f"Test Accuracy for 20 epochs = {epoch_20_test_accuracy}")
+print(f"Train Accuracy for 5 epochs = {epoch_5_train_accuracy}")
+print(f"Train Accuracy for 20 epochs = {epoch_20_train_accuracy}")
