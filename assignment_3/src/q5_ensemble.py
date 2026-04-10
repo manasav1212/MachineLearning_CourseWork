@@ -32,11 +32,11 @@ data_loader = []
 input_shape = X_train.shape[1]
 seed_everything(42)
 
-models = [  DynamicNeuralNet(input_shape, [64, 64, 64], [0.5, 0.5, 0.5]),
+models = [  DynamicNeuralNet(input_shape, [64, 64, 64], [0.2, 0.4, 0.5]),
             DynamicNeuralNet(input_shape, [64, 64, 64], [0.4, 0.4, 0.4]),
-            DynamicNeuralNet(input_shape, [64, 64, 64], [0.4, 0.5, 0.6]),
+            DynamicNeuralNet(input_shape, [64, 64, 64], [0.1, 0.3, 0.6]),
+            DynamicNeuralNet(input_shape, [64, 64, 64], [0.3, 0.4, 0.5]),
             DynamicNeuralNet(input_shape, [64, 64, 64], [0.3, 0.3, 0.3]),
-            DynamicNeuralNet(input_shape, [64, 64, 64], [0.1, 0.2, 0.3]),
         ]
 num_of_models = len(models)
 
