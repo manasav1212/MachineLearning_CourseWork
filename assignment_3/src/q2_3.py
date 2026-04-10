@@ -22,22 +22,29 @@ X_train = tfidf.fit_transform(X_train)
 X_test = tfidf.transform(X_test)
 
 dataset = JointDataset(X_train, y_train)
-data_loader = DataLoader(dataset, 64, shuffle=True,)
+train_loader = DataLoader(dataset, 64, shuffle=True,)
+test_loader = DataLoader(JointDataset(X_test, y_test), batch_size=64, shuffle=False)
 
 input_shape = X_train.shape[1]
 #  Baseline model tuning
-models = {'a': DynamicNeuralNet(input_shape, [64,64,64]),
-          'b': DynamicNeuralNet(input_shape, [64,64]),
-          'c': DynamicNeuralNet(input_shape, [32,32,32]),
-          'd': DynamicNeuralNet(input_shape, [128,64,32]),
-          }
-for name, model in models.items():
-    print(f"===============Training model {name} =======================")
-    optimizer = torch.optim.Adam(model.parameters(), lr = 1e-4, weight_decay= 0)
-    train_model(model, optimizer, data_loader)
+decays = [1e-5,1e-4,5e-4,5e-5, 1e-6]
+layers = [[32,32,32],[64,64,64],[32,32,32,32]]
+accuracy = []
+train_accuracy = []
+layer_results = []
+decay_results = []
+for layer in layers:
+    for decay in decays:
+        print(f"===============Training model with {decay} =======================")
+        seed_everything(42) 
+        model = DynamicNeuralNet(input_shape, layer)
+        optimizer = torch.optim.Adam(model.parameters(), lr = 1e-4, weight_decay= decay)
+        train_model(model, optimizer, train_loader)
 
-    # Evaluate the model
-
-    test_loader = DataLoader(JointDataset(X_test, y_test), batch_size=64, shuffle=False)
-    evaluate_model(model, data_loader, "Training")
-    evaluate_model(model, test_loader)
+        # Evaluate the model
+        train_accuracy.append(evaluate_model(model, train_loader, "Training"))
+        accuracy.append(evaluate_model(model, test_loader, "Test"))
+        layer_results.append(layer)
+        decay_results.append(decay)
+res = pd.DataFrame({"hidden_layers": layer_results, "decay": decay_results, "accuracy": accuracy, "train_accuracy": train_accuracy})
+print(res)

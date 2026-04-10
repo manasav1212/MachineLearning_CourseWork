@@ -1,11 +1,27 @@
 import numpy as np
-import pandas as pd
 
 import torch
 from torch.utils.data import Dataset
     
 import scipy.sparse
 import time
+
+import numpy as np
+import random
+import os
+
+def seed_everything(seed=42):
+    random.seed(seed)
+    
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    
+    np.random.seed(seed)
+    
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
 class JointDataset(Dataset):
     def __init__(self, x, y):
@@ -93,6 +109,7 @@ class DynamicNeuralNet(torch.nn.Module):
         super().__init__()
         self.layers = torch.nn.ModuleList() 
         current_dim = input_size
+        self.dropout_rates = dropout_rates
         self.use_dropout = dropout_rates is not None
         if (self.use_dropout):
             assert len(hidden_layers) == len(dropout_rates), "Length mismatch"
@@ -164,3 +181,69 @@ def evaluate_model(model, data_loader, title = 'Test'):
 
     accuracy = correct / total
     print(f"{title} Accuracy:", accuracy)
+    return accuracy
+
+def evaluate_ensembled_models(models, data_loader, title = 'Ensembled Models'):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    correct = 0
+    total = 0
+
+    # Evaluate mode
+    for model in models:
+        model.eval()
+
+    with torch.no_grad():
+            for X_batch, y_batch in data_loader:
+                X_batch = X_batch.to(device)
+                y_batch = y_batch.unsqueeze(1).float().to(device)
+
+                # Since its tensor of single probability value, we can sum and mean them
+                sum_output = torch.zeros_like(y_batch)
+                for model in models:
+                        output = model(X_batch)
+                        probability = torch.sigmoid(output)
+                        sum_output += probability
+                
+                final_probability = sum_output / len(models)
+                y_pred = (final_probability >= 0.5)
+
+                match_count = (y_batch == y_pred).sum().item()
+                correct += match_count
+                total += X_batch.shape[0]
+
+    accuracy = correct / total
+    print(f"{title} Accuracy:", accuracy)
+    return accuracy
+
+def evaluate_ensembled_models2(models, data_loader, title = 'Ensembled Models'):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    correct = 0
+    total = 0
+
+    # Evaluate mode
+    for model in models:
+        model.eval()
+
+    with torch.no_grad():
+            for X_batch, y_batch in data_loader:
+                X_batch = X_batch.to(device)
+                y_batch = y_batch.unsqueeze(1).float().to(device)
+
+                # Since its tensor of single probability value, we can sum and mean them
+                sum_output = torch.zeros_like(y_batch)
+                for model in models:
+                        output = model(X_batch)
+                        probability = torch.sigmoid(output)
+                        probability = (probability >= 0.5).float()
+                        sum_output += probability
+                
+                final_probability = sum_output / len(models)
+                y_pred = (final_probability >= 0.5)
+
+                match_count = (y_batch == y_pred).sum().item()
+                correct += match_count
+                total += X_batch.shape[0]
+
+    accuracy = correct / total
+    print(f"{title} Accuracy:", accuracy)
+    return accuracy

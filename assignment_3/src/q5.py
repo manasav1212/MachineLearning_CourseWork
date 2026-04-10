@@ -37,7 +37,7 @@ models = {'a': DynamicNeuralNet(input_shape, [64,64], [0.1, 0.5]),
           }
 for name, model in models.items():
     print(f"===============Training model {name} =======================")
-    optimizer = torch.optim.Adam(model.parameters(), lr = 1e-4, weight_decay= 0)
+    optimizer = torch.optim.Adam(model.parameters(), lr = 1e-4)
     train_model(model, optimizer, data_loader)
 
     # Evaluate the model
