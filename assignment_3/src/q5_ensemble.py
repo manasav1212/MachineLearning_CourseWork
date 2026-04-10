@@ -24,6 +24,7 @@ X_train = tfidf.fit_transform(X_train)
 X_test = tfidf.transform(X_test)
 
 dataset = JointDataset(X_train, y_train)
+test_loader = DataLoader(JointDataset(X_test, y_test), batch_size=64, shuffle=False)
 
 total = len(dataset)
 data_loader = []
