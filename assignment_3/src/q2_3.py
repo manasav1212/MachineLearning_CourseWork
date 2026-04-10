@@ -53,7 +53,7 @@ print(res)
 seed_everything(42)
 baseline_model = DynamicNeuralNet(input_shape, [32, 32, 32] )
 optimizer = torch.optim.Adam(baseline_model.parameters(), lr = 1e-4, weight_decay= 1e-5)
-_, history = train_model2(baseline_model, optimizer, train_loader, test_loader, 20)
+_, history = train_model2(baseline_model, optimizer, train_loader, 20, test_loader)
 
 # PLotting the training and validation loss curves
 import matplotlib.pyplot as plt
