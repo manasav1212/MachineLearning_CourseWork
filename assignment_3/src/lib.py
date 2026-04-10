@@ -10,6 +10,8 @@ import numpy as np
 import random
 import os
 
+DATA_FILE_PATH='../data'
+
 def seed_everything(seed=42):
     random.seed(seed)
     

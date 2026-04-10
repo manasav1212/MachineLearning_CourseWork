@@ -6,10 +6,10 @@ from sklearn.model_selection import train_test_split
 
 from lib import *
 
-df = pd.read_csv('../data/movie_data.csv', encoding='utf-8')
+df = pd.read_csv(f'{DATA_FILE_PATH}/movie_data.csv', encoding='utf-8')
 
 X_train, X_test, y_train, y_test = train_test_split(
-    df['review'],
+    df['clean_text'],
     df['sentiment'],
     test_size=0.3,
     random_state=7
@@ -18,10 +18,10 @@ X_train, X_test, y_train, y_test = train_test_split(
 def tokenizer(text):
     return text.split()
 
-df = pd.read_csv('../data/movie_data.csv', encoding='utf-8')
+df = pd.read_csv(f'{DATA_FILE_PATH}/movie_data.csv', encoding='utf-8')
 
 X_train, X_test, y_train, y_test = train_test_split(
-    df['review'],
+    df['clean_text'],
     df['sentiment'],
     test_size=0.3,
     random_state=7

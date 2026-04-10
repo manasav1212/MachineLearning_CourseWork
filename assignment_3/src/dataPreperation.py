@@ -5,6 +5,7 @@ import re
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.model_selection import train_test_split
+from lib import DATA_FILE_PATH
 
 def preprocessor(text):
      text = re.sub('<[^>]*>', '', text)
@@ -15,7 +16,7 @@ def preprocessor(text):
      return text
 
 directoryPath = os.path.dirname(os.path.abspath(__file__))
-basepath = "..\\data\\aclImdb"
+basepath = f'{DATA_FILE_PATH}/aclImdb'
 labels = {'pos': 1, 'neg': 0}
 df = pd.DataFrame()
 count = CountVectorizer()
@@ -32,12 +33,12 @@ df = pd.DataFrame(rows, columns=['review', 'sentiment'])
 
 np.random.seed(0)
 df = df.reindex(np.random.permutation(df.index))
-df.to_csv('movie_data.csv', index=False, encoding='utf-8')
+df.to_csv(f'{DATA_FILE_PATH}/movie_data.csv', index=False, encoding='utf-8')
 
-df = pd.read_csv('movie_data.csv', encoding='utf-8')
+df = pd.read_csv(f'{DATA_FILE_PATH}/movie_data.csv', encoding='utf-8')
 
 df['clean_text'] = df['review'].apply(preprocessor)
-df.to_csv('clean_movie_data.csv', index=False, encoding='utf-8')
+df.to_csv(f'{DATA_FILE_PATH}/movie_data.csv', index=False, encoding='utf-8')
 
 tfidf = TfidfTransformer(use_idf=True, norm='l2', smooth_idf=True)
 np.set_printoptions(precision=2)
