@@ -40,33 +40,6 @@ class JointDataset(Dataset):
              'x: ' + str(x) + '\t' + 'y: ' + str(y) + '\n'
         return result
 
-class JointSparseDataset(Dataset):
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y.values
-
-    def __len__(self):
-        return self.x.shape[0]
-    
-    def __getitem__(self, idx):
-        return self.x[idx], self.y[idx]
-    
-    def __str__(self):
-        result = ''
-        for x,y in zip(self.x, self.y):
-             'x: ' + str(x) + '\t' + 'y: ' + str(y) + '\n'
-        return result
-
-def sparse_collate(batch):
-    
-    x_sparse = scipy.sparse.vstack([item[0] for item in batch])
-    
-    x_dense = torch.tensor(x_sparse.toarray(), dtype=torch.float32)
-    
-    y_batch = torch.tensor([item[1] for item in batch], dtype=torch.float32)
-    
-    return x_dense, y_batch
-
 class NeuralNet(torch.nn.Module):
 
     def __init__(self, input_size):
@@ -183,6 +156,8 @@ def evaluate_model(model, data_loader, title = 'Test'):
     print(f"{title} Accuracy:", accuracy)
     return accuracy
 
+
+# Soft voting ensemble evaluation
 def evaluate_ensembled_models(models, data_loader, title = 'Ensembled Models'):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     correct = 0
@@ -215,6 +190,7 @@ def evaluate_ensembled_models(models, data_loader, title = 'Ensembled Models'):
     print(f"{title} Accuracy:", accuracy)
     return accuracy
 
+# hard voting ensemble evaluation
 def evaluate_ensembled_models2(models, data_loader, title = 'Ensembled Models'):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     correct = 0
@@ -247,3 +223,50 @@ def evaluate_ensembled_models2(models, data_loader, title = 'Ensembled Models'):
     accuracy = correct / total
     print(f"{title} Accuracy:", accuracy)
     return accuracy
+
+def train_model2(model, optimizer, train_loader, epochs=5, val_loader=None):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f'Device found: {device}')
+    model = model.to(device)
+    L = torch.nn.BCEWithLogitsLoss()
+
+    # Store the metrics for graph
+    history = {'train_loss': [], 'val_loss': []}
+
+    start = time.perf_counter()
+    for epoch in range(epochs):
+        # Training mode here since we validate the model at the end of each epoch for graph
+        model.train()
+        train_loss = 0.0
+        for (X_batch, y_batch) in train_loader:
+            optimizer.zero_grad()
+            X_batch = X_batch.to(device)
+            y_batch = y_batch.unsqueeze(1).float().to(device)
+            output = model(X_batch)
+            loss = L(output, y_batch)
+            loss.backward()
+            optimizer.step()
+            
+            train_loss += loss.item() * X_batch.size(0)
+            
+        avg_train_loss = train_loss / len(train_loader.dataset)
+        history['train_loss'].append(avg_train_loss)
+
+        # Validation error calculation for graph
+        if val_loader is not None:
+            model.eval()
+            val_loss = 0.0
+            with torch.no_grad():
+                for X_batch, y_batch in val_loader:
+                    X_batch = X_batch.to(device)
+                    y_batch = y_batch.unsqueeze(1).float().to(device)
+                    
+                    output = model(X_batch)
+                    loss = L(output, y_batch)
+                    val_loss += loss.item() * X_batch.size(0)
+                    
+            avg_val_loss = val_loss / len(val_loader.dataset)
+            history['val_loss'].append(avg_val_loss) # Save to history
+
+    print(f'Train time = {time.perf_counter() - start:.2f} sec')
+    return model, history

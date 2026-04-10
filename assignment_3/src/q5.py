@@ -26,7 +26,7 @@ train_loader = DataLoader(dataset, 64, shuffle=True,)
 test_loader = DataLoader(JointDataset(X_test, y_test), batch_size=64, shuffle=False)
 
 input_shape = X_train.shape[1]
-layers = [64,64,64]
+layers = [32, 32, 32]
 dropouts = [
     [0.2, 0.4, 0.5],
     [0.5, 0.5, 0.5],
