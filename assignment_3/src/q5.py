@@ -22,29 +22,38 @@ X_train = tfidf.fit_transform(X_train)
 X_test = tfidf.transform(X_test)
 
 dataset = JointDataset(X_train, y_train)
-data_loader = DataLoader(dataset, 64, shuffle=True,)
+train_loader = DataLoader(dataset, 64, shuffle=True,)
 test_loader = DataLoader(JointDataset(X_test, y_test), batch_size=64, shuffle=False)
 
 input_shape = X_train.shape[1]
-
-# Trying out different dropouts with the baseline FNN model
-models = {'a': DynamicNeuralNet(input_shape, [64,64], [0.1, 0.5]),
-          'b': DynamicNeuralNet(input_shape, [64,64], [0.2, 0.5]),
-          'c': DynamicNeuralNet(input_shape, [64,64], [0.3, 0.7]),
-          'd': DynamicNeuralNet(input_shape, [64,64], [0.4, 0.7]),
-          'e': DynamicNeuralNet(input_shape, [64,64], [0.4, 0.4]),
-          'f': DynamicNeuralNet(input_shape, [64,64], [0.5, 0.5]),
-          }
-for name, model in models.items():
-    print(f"===============Training model {name} =======================")
+layers = [64,64,64]
+dropouts = [
+    [0.2, 0.4, 0.5],
+    [0.5, 0.5, 0.5],
+    [0.4, 0.4, 0.4],
+    [0.1, 0.3, 0.6],
+    [0.3, 0.3, 0.3],
+    [0.3, 0.4, 0.5],
+    [0.4, 0.5, 0.6],
+    [0.6, 0.6, 0.6],
+    [0.5, 0.5, 0.6],
+    [0.5, 0.6, 0.7],
+    [0.7, 0.7, 0.7],
+]
+droupout_results = []
+test_accuracy = []
+train_accuracy = []
+for dropout_rate in dropouts:
+    print(f"===============Training model for {dropout_rate} =======================")
+    seed_everything(42)
+    model = DynamicNeuralNet(input_shape, layers, dropout_rate)
     optimizer = torch.optim.Adam(model.parameters(), lr = 1e-4)
-    train_model(model, optimizer, data_loader)
+    train_model(model, optimizer, train_loader)
 
     # Evaluate the model
-
-    test_loader = DataLoader(JointDataset(X_test, y_test), batch_size=64, shuffle=False)
-    evaluate_model(model, data_loader, "Training")
-    evaluate_model(model, test_loader)
-
-# Using bagging to train multiple models and ensemble them together
+    train_accuracy.append(evaluate_model(model, train_loader, "Training"))
+    test_accuracy.append(evaluate_model(model, test_loader, "Test"))
+    droupout_results.append(dropout_rate)
+result = pd.DataFrame({"dropout_rate": droupout_results, "train_accuracy": train_accuracy, "test_accuracy": test_accuracy})
+print(result)
  
