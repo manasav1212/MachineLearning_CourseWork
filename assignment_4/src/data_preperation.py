@@ -3,7 +3,7 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
 import torch
 
-tickers = ["AMZN", "MSFT", "NVDA", "GOOGL"]
+tickers = ["WMT", "MSFT", "NVDA", "GOOGL"]
 data = yf.download(tickers, start="2025-01-01", end="2026-01-01")
 closing_data = data['Close']
 closing_data.dropna()
