@@ -3,6 +3,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 import numpy as np
+import torch
 import yfinance as yf
 
 def split_and_scale(df, window_size = 50):
@@ -63,7 +64,7 @@ def preprocess_data(raw_data : dict, window_size : int, x_cols : list = ['Open',
             'index': i,
             'test_range': (test_start, test_end)
         }
-    return X_train, X_test, y_train, y_test, metadata
+    return torch.tensor(X_train, dtype=torch.float32), torch.tensor(X_test, dtype=torch.float32), torch.tensor(y_train, dtype=torch.float32), torch.tensor(y_test, dtype=torch.float32), metadata
 
 def fetch_data(tickers: list[str], start_date, end_date, window_size = 50):
     data = {name: yf.download(name, start=start_date, end=end_date) for name in tickers}
