@@ -1,25 +1,38 @@
 
+import os
+
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import numpy as np
 import torch
 import yfinance as yf
+import random
+from torch.utils.data import Dataset
+from torch import nn
+
+import matplotlib.pyplot as plt
+import numpy as np
 
 def split_and_scale(df, window_size = 50):
     x_scaler = MinMaxScaler()
     y_scaler = MinMaxScaler()
+    
     x_cols = ['Open', 'High', 'Low', 'Volume', 'Close']
     y_col = ['Close']
-    X = df[x_cols]
-    y = df[y_col]
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=None, shuffle=False)
-    y_train = y_train.iloc[window_size:]
-    X_test = pd.concat([X_train.iloc[-window_size:], X_test])
-    X_train = x_scaler.fit_transform(X_train)
-    X_test = x_scaler.transform(X_test)
-    y_train = y_scaler.fit_transform(y_train)
-    y_test = y_scaler.transform(y_test)
+    
+    X_raw = df[x_cols]
+    y_raw = df[y_col]
+    
+    X_scaled = x_scaler.fit_transform(X_raw)
+    y_scaled = y_scaler.fit_transform(y_raw)
+    
+    X_train, X_test, y_train, y_test = train_test_split(X_scaled, y_scaled, test_size=0.2, shuffle=False)
+    
+    y_train = y_train[window_size:]
+    
+    X_test = np.vstack((X_train[-window_size:], X_test))
+    
     return X_train, X_test, y_train, y_test, (x_scaler, y_scaler)
 
 def create_rolling_window(X, window_size):
@@ -69,3 +82,167 @@ def preprocess_data(raw_data : dict, window_size : int, x_cols : list = ['Open',
 def fetch_data(tickers: list[str], start_date, end_date, window_size = 50):
     data = {name: yf.download(name, start=start_date, end=end_date) for name in tickers}
     return preprocess_data(data, window_size)
+
+def seed_everything(seed=42):
+    random.seed(seed)
+    
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    
+    np.random.seed(seed)
+    
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+class JointDataset(Dataset):
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+    def __len__(self):
+        return self.x.shape[0]
+    
+    def __getitem__(self, idx):
+        return self.x[idx], self.y[idx]
+    
+    def __str__(self):
+        result = ''
+        for x,y in zip(self.x, self.y):
+             result += 'x: ' + str(x) + '\t' + 'y: ' + str(y) + '\n'
+        return result
+
+def evaluate_model(model, test_loader, metadata, device = torch.device("cuda" if torch.cuda.is_available() else "cpu")):
+    """
+    Metrics:
+      - RMSE: Root Mean Squared Error (dollar units)
+      - MAE:  Mean Absolute Error (dollar units)
+      - MAPE: Mean Absolute Percentage Error (%)
+    """
+    model.eval()
+    all_preds, all_targets = [], []
+
+    with torch.no_grad():
+        for X_batch, y_batch in test_loader:
+            X_batch = X_batch.to(device)
+            preds = model(X_batch).cpu().numpy()
+            all_preds.append(preds)
+            all_targets.append(y_batch.numpy().reshape(-1, 1))
+
+    all_preds = np.concatenate(all_preds, axis=0)
+    all_targets = np.concatenate(all_targets, axis=0)
+
+    results = {}
+
+    for ticker, meta in metadata.items():
+        # We added test_range during processing to know which row belongs to which company.
+        start, end = meta['test_range']
+        # Need the scaler to reverse the min-max normalization
+        y_scaler = meta['scalers'][1]
+
+        preds_scaled = all_preds[start:end]
+        targets_scaled = all_targets[start:end]
+
+        # Inverse scaler to get the dollar amount
+        preds = y_scaler.inverse_transform(preds_scaled).flatten()
+        targets = y_scaler.inverse_transform(targets_scaled).flatten()
+
+        errors = preds - targets
+        rmse = np.sqrt(np.mean(errors ** 2))
+        mae = np.mean(np.abs(errors))
+        mape = np.mean(np.abs(errors / targets)) * 100
+
+        results[ticker] = {
+            'RMSE': rmse,
+            'MAE': mae,
+            'MAPE': mape,
+        }
+
+    # Overall metrics; Might not be meaningful since different companies have different price ranges except MAPE
+    results['OVERALL'] = {
+        metric: np.mean([results[t][metric] for t in metadata])
+        for metric in ['RMSE', 'MAE', 'MAPE']
+    }
+
+    return results
+
+
+def print_results(results):
+    print(f"{'Ticker':<10} {'RMSE':>10} {'MAE':>10} {'MAPE(%)':>10}")
+    print("-" * 44)
+    for ticker, m in results.items():
+        print(f"{ticker:<10} {m['RMSE']:>10.2f} {m['MAE']:>10.2f} {m['MAPE']:>10.2f} ")
+
+def plot_predictions(model, test_loader, metadata, device = torch.device("cuda" if torch.cuda.is_available() else "cpu")):
+    model.eval()
+    all_preds, all_targets = [], []
+    
+    with torch.no_grad():
+        for X_batch, y_batch in test_loader:
+            X_batch = X_batch.to(device)
+            preds = model(X_batch).cpu().numpy()
+            all_preds.append(preds)
+            all_targets.append(y_batch.numpy().reshape(-1, 1))
+    
+    all_preds = np.concatenate(all_preds, axis=0)
+    all_targets = np.concatenate(all_targets, axis=0)
+    
+    # NUmber of companies
+    n = len(metadata)
+    cols = 2 if n > 1 else 1
+    rows = (n + cols - 1) // cols
+    _, axes = plt.subplots(rows, cols, figsize=(7 * cols, 4 * rows))
+    
+    # Subplot needs array
+    if n == 1:
+        axes = [axes]
+    else:
+        axes = axes.flatten()
+    
+    for ax, (ticker, meta) in zip(axes, metadata.items()):
+        start, end = meta['test_range']
+        y_scaler = meta['scalers'][1]
+        
+        preds_scaled = all_preds[start:end]
+        targets_scaled = all_targets[start:end]
+        
+        preds = y_scaler.inverse_transform(preds_scaled).flatten()
+        targets = y_scaler.inverse_transform(targets_scaled).flatten()
+        
+        days = np.arange(len(targets))
+        ax.plot(days, targets, label='Actual', color='tab:blue', linewidth=1.5)
+        ax.plot(days, preds, label='Predicted', color='tab:orange', linewidth=1.5, alpha=0.8)
+        
+        ax.set_title(f'{ticker}')
+        ax.set_xlabel('Test day')
+        ax.set_ylabel('Close price ($)')
+        ax.legend(loc='best')
+        ax.grid(alpha=0.3)
+    
+    plt.tight_layout()
+    plt.show()
+
+class TunedRnn(torch.nn.Module):
+
+    def __init__(self, input_size, dropout_rate):
+        super().__init__()
+        self.r1 = nn.RNN(input_size, 32, 1, batch_first=True, dropout=dropout_rate)
+        self.dropout = nn.Dropout(dropout_rate)
+        self.output = nn.Linear(32, 1)
+
+    def forward(self, X):
+        rnn_out, hidden = self.r1(X)
+        output = self.dropout(hidden[-1])
+        return self.output(output)
+
+def plot_loss(loss, figure_size=(9, 5)):
+    plt.figure(figsize= figure_size)
+    plt.plot(loss, label='Training Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss(Log scale)')
+    plt.yscale('log')
+    plt.title('Training Loss over Epochs')
+    plt.legend()
+    plt.grid()
+    plt.show()
