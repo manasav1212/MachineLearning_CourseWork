@@ -13,6 +13,7 @@ from torch import nn
 
 import matplotlib.pyplot as plt
 import numpy as np
+import time
 
 def split_and_scale(df, window_size = 50):
     x_scaler = MinMaxScaler()
@@ -246,3 +247,30 @@ def plot_loss(loss, figure_size=(9, 5)):
     plt.legend()
     plt.grid()
     plt.show()
+
+def train_model(model, optimizer, data_loader, epochs = 200):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # device = torch.device("cpu")
+    print(f'Device found: {device}')
+    model = model.to(device)
+    L = torch.nn.MSELoss()
+    epoch_losses = []
+    model.train()
+    start = time.perf_counter()
+    for epoch in range(200):
+        epoch_loss = 0.0
+        n_batches = 0
+        for X_batch, y_batch in data_loader:
+            optimizer.zero_grad()
+            X_batch = X_batch.to(device)
+            y_batch = y_batch.float().to(device)
+            output = model(X_batch)
+            loss = L(output, y_batch)
+            loss.backward()
+            optimizer.step()
+            epoch_loss += loss.item()
+            n_batches += 1
+        print(f"Epoch {epoch+1}: avg loss = {epoch_loss / n_batches:.6f}")
+        epoch_losses.append(epoch_loss / n_batches)
+    print(f'Train time = {time.perf_counter() - start} sec')
+    return model, epoch_losses
