@@ -44,7 +44,7 @@ def create_rolling_window(X, window_size):
 
 def preprocess_data(raw_data : dict, window_size : int, x_cols : list = ['Open', 'High', 'Low', 'Volume', 'Close']):
     ticker_count = len(raw_data)
-    X_train = np.empty((0, window_size, len(x_cols) + len(raw_data)))
+    X_train = np.empty((0, window_size, len(x_cols)))
     X_test = np.empty_like(X_train)
     y_train = np.empty((0, 1))
     y_test = np.empty_like(y_train)
@@ -57,13 +57,14 @@ def preprocess_data(raw_data : dict, window_size : int, x_cols : list = ['Open',
         X_train_i = create_rolling_window(X_train_i, window_size)
         X_test_i = create_rolling_window(X_test_i, window_size)
 
-        one_hot = np.zeros((len(X_train_i), window_size, ticker_count))
-        one_hot[:, :, i] = 1
-        X_train_i = np.concatenate([X_train_i, one_hot], axis=2)
+        # Uncomment this if we want to train single model for all companies using one-hot-encoding
+        # one_hot = np.zeros((len(X_train_i), window_size, ticker_count))
+        # one_hot[:, :, i] = 1
+        # X_train_i = np.concatenate([X_train_i, one_hot], axis=2)
 
-        one_hot = np.zeros((len(X_test_i), window_size, ticker_count))
-        one_hot[:, :, i] = 1
-        X_test_i = np.concatenate([X_test_i, one_hot], axis=2)
+        # one_hot = np.zeros((len(X_test_i), window_size, ticker_count))
+        # one_hot[:, :, i] = 1
+        # X_test_i = np.concatenate([X_test_i, one_hot], axis=2)
 
         X_train = np.concatenate([X_train, X_train_i], axis=0)
         X_test = np.concatenate([X_test, X_test_i], axis=0)
@@ -76,6 +77,7 @@ def preprocess_data(raw_data : dict, window_size : int, x_cols : list = ['Open',
         metadata[ticker] = { 
             'scalers': scalers,
             'index': i,
+            # This will be useful if we use one-hot-encoding to know which row belongs to which company
             'test_range': (test_start, test_end)
         }
     return torch.tensor(X_train, dtype=torch.float32), torch.tensor(X_test, dtype=torch.float32), torch.tensor(y_train, dtype=torch.float32), torch.tensor(y_test, dtype=torch.float32), metadata
@@ -273,3 +275,47 @@ def train_model(model, optimizer, data_loader, epochs = 200):
         epoch_losses.append(epoch_loss / n_batches)
     print(f'Train time = {time.perf_counter() - start} sec')
     return model, epoch_losses
+
+class DynamicRNN(nn.Module):
+
+    def __init__(self, input_size, layers, dropout=0.2):
+        super().__init__()
+        
+        if not any(layer_type == 'rnn' for layer_type, _ in layers):
+            raise ValueError("At least one layer must be RNN")
+        
+        self.layer_types = [layer_type for layer_type, _ in layers]
+        self.layers = nn.ModuleList()
+        
+        # If there is a linear after the last RNN, we will take the output of the last RNN as input to that linear layer
+        self.last_rnn_idx = max(
+            i for i, (layer_type, _) in enumerate(layers) if layer_type == 'rnn'
+        )
+        
+        # Current dim starts as input_size and gets updated after each layer
+        current_dim = input_size
+        for layer_type, output_dim in layers:
+            if layer_type == 'linear':
+                self.layers.append(nn.Linear(current_dim, output_dim))
+            elif layer_type == 'rnn':
+                self.layers.append(nn.RNN(current_dim, output_dim, num_layers=1, batch_first=True))
+            else:
+                raise ValueError(f"Unknown layer type: {layer_type}")
+            current_dim = output_dim
+        
+        self.dropout = nn.Dropout(dropout)
+        self.output = nn.Linear(current_dim, 1)
+    
+    def forward(self, X):
+        for i, (layer, layer_type) in enumerate(zip(self.layers, self.layer_types)):
+            if layer_type == 'linear':
+                X = torch.relu(layer(X))
+            else:
+                rnn_out, hidden = layer(X)
+                if i == self.last_rnn_idx:
+                    X = hidden[-1]
+                else:
+                    X = rnn_out
+            X = self.dropout(X)
+        
+        return self.output(X)
