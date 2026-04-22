@@ -71,13 +71,15 @@ def preprocess_data(raw_data : dict, window_size : int, x_cols : list = ['Open',
         y_train = np.concatenate([y_train, y_train_i], axis=0)
         y_test = np.concatenate([y_test, y_test_i], axis=0)
 
-
+        train_start = len(X_train) - len(X_train_i)
+        train_end = train_start + len(X_train_i)
         test_start = len(X_test) - len(X_test_i)
         test_end = test_start + len(X_test_i)
         metadata[ticker] = { 
             'scalers': scalers,
             'index': i,
             # This will be useful if we use one-hot-encoding to know which row belongs to which company
+            'train_range': (train_start, train_end),
             'test_range': (test_start, test_end)
         }
     return torch.tensor(X_train, dtype=torch.float32), torch.tensor(X_test, dtype=torch.float32), torch.tensor(y_train, dtype=torch.float32), torch.tensor(y_test, dtype=torch.float32), metadata
@@ -116,7 +118,7 @@ class JointDataset(Dataset):
              result += 'x: ' + str(x) + '\t' + 'y: ' + str(y) + '\n'
         return result
 
-def evaluate_model(model, test_loader, metadata, device = torch.device("cuda" if torch.cuda.is_available() else "cpu")):
+def evaluate_model(model, test_loader, metadata, range_key='test_range', device = torch.device("cuda" if torch.cuda.is_available() else "cpu")):
     """
     Metrics:
       - RMSE: Root Mean Squared Error (dollar units)
@@ -140,7 +142,7 @@ def evaluate_model(model, test_loader, metadata, device = torch.device("cuda" if
 
     for ticker, meta in metadata.items():
         # We added test_range during processing to know which row belongs to which company.
-        start, end = meta['test_range']
+        start, end = meta[range_key]
         # Need the scaler to reverse the min-max normalization
         y_scaler = meta['scalers'][1]
 
@@ -162,7 +164,8 @@ def evaluate_model(model, test_loader, metadata, device = torch.device("cuda" if
             'MAPE': mape,
         }
 
-    # Overall metrics; Might not be meaningful since different companies have different price ranges except MAPE
+    # Overall metrics; Might not be meaningful since different companies have different price ranges except MAPE. 
+    # Useful if used one-hot-encoding and training single model for all companies together to see overall performance across all companies.
     results['OVERALL'] = {
         metric: np.mean([results[t][metric] for t in metadata])
         for metric in ['RMSE', 'MAE', 'MAPE']
