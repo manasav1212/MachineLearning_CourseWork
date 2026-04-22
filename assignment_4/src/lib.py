@@ -270,7 +270,6 @@ def train_model(model, optimizer, data_loader, epochs = 200):
             optimizer.step()
             epoch_loss += loss.item()
             n_batches += 1
-        print(f"Epoch {epoch+1}: avg loss = {epoch_loss / n_batches:.6f}")
         epoch_losses.append(epoch_loss / n_batches)
     print(f'Train time = {time.perf_counter() - start} sec')
     return model, epoch_losses
