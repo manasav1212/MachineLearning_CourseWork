@@ -157,28 +157,33 @@ def evaluate_model(model, test_loader, metadata, range_key='test_range', device 
         rmse = np.sqrt(np.mean(errors ** 2))
         mae = np.mean(np.abs(errors))
         mape = np.mean(np.abs(errors / targets)) * 100
+        actual_changes = np.diff(targets)
+        pred_changes = np.diff(preds)
+        dir_acc = np.mean(np.sign(actual_changes) == np.sign(pred_changes)) * 100
 
         results[ticker] = {
             'RMSE': rmse,
             'MAE': mae,
             'MAPE': mape,
+            'DirAcc': dir_acc,
         }
 
     # Overall metrics; Might not be meaningful since different companies have different price ranges except MAPE. 
     # Useful if used one-hot-encoding and training single model for all companies together to see overall performance across all companies.
     results['OVERALL'] = {
         metric: np.mean([results[t][metric] for t in metadata])
-        for metric in ['RMSE', 'MAE', 'MAPE']
+        for metric in ['RMSE', 'MAE', 'MAPE', 'DirAcc']
     }
 
     return results
 
 
 def print_results(results):
-    print(f"{'Ticker':<10} {'RMSE':>10} {'MAE':>10} {'MAPE(%)':>10}")
-    print("-" * 44)
+    print(f"{'Ticker':<10} {'RMSE':>10} {'MAE':>10} {'MAPE(%)':>10} {'DirAcc(%)':>12}")
+    print("-" * 56)
     for ticker, m in results.items():
-        print(f"{ticker:<10} {m['RMSE']:>10.2f} {m['MAE']:>10.2f} {m['MAPE']:>10.2f} ")
+        print(f"{ticker:<10} {m['RMSE']:>10.2f} {m['MAE']:>10.2f} "
+              f"{m['MAPE']:>10.2f} {m['DirAcc']:>12.2f}")
 
 def plot_predictions(model, test_loader, metadata, device = torch.device("cuda" if torch.cuda.is_available() else "cpu")):
     model.eval()
@@ -262,7 +267,7 @@ def train_model(model, optimizer, data_loader, epochs = 200):
     epoch_losses = []
     model.train()
     start = time.perf_counter()
-    for epoch in range(200):
+    for epoch in range(epochs):
         epoch_loss = 0.0
         n_batches = 0
         for X_batch, y_batch in data_loader:
@@ -319,6 +324,47 @@ class DynamicRNN(nn.Module):
                     X = hidden[-1]
                 else:
                     X = rnn_out
+            X = self.dropout(X)
+        
+        return self.output(X)
+    
+class DynamicLSTM(nn.Module):
+    def __init__(self, input_size, layers, dropout=0.2):
+        super().__init__()
+        
+        if not any(layer_type == 'lstm' for layer_type, _ in layers):
+            raise ValueError("At least one LSTM layer required")
+        
+        self.layer_types = [layer_type for layer_type, _ in layers]
+        self.layers = nn.ModuleList()
+        
+        self.last_lstm_idx = max(
+            i for i, (layer_type, _) in enumerate(layers) if layer_type == 'lstm'
+        )
+        
+        current_dim = input_size
+        for layer_type, output_dim in layers:
+            if layer_type == 'linear':
+                self.layers.append(nn.Linear(current_dim, output_dim))
+            elif layer_type == 'lstm':
+                self.layers.append(nn.LSTM(current_dim, output_dim, num_layers=1, batch_first=True))
+            else:
+                raise ValueError(f"Unknown layer type: {layer_type}")
+            current_dim = output_dim
+        
+        self.dropout = nn.Dropout(dropout)
+        self.output = nn.Linear(current_dim, 1)
+    
+    def forward(self, X):
+        for i, (layer, layer_type) in enumerate(zip(self.layers, self.layer_types)):
+            if layer_type == 'linear':
+                X = torch.relu(layer(X))
+            else:
+                lstm_out, (hidden, cell) = layer(X)
+                if i == self.last_lstm_idx:
+                    X = hidden[-1]
+                else:
+                    X = lstm_out
             X = self.dropout(X)
         
         return self.output(X)
