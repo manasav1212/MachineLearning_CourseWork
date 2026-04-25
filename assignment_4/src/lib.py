@@ -327,7 +327,51 @@ class DynamicRNN(nn.Module):
             X = self.dropout(X)
         
         return self.output(X)
+
+class DynamicGRU(nn.Module):
+
+    def __init__(self, input_size, layers, dropout=0.2):
+        super().__init__()
+        
+        if not any(layer_type == 'gru' for layer_type, _ in layers):
+            raise ValueError("At least one layer must be GRU")
+        
+        self.layer_types = [layer_type for layer_type, _ in layers]
+        self.layers = nn.ModuleList()
+        
+        # If there is a linear after the last RNN, we will take the output of the last RNN as input to that linear layer
+        self.last_gru_idx = max(
+            i for i, (layer_type, _) in enumerate(layers) if layer_type == 'gru'
+        )
+        
+        # Current dim starts as input_size and gets updated after each layer
+        current_dim = input_size
+        for layer_type, output_dim in layers:
+            if layer_type == 'linear':
+                self.layers.append(nn.Linear(current_dim, output_dim))
+            elif layer_type == 'gru':
+                self.layers.append(nn.GRU(current_dim, output_dim, num_layers=1, batch_first=True))
+            else:
+                raise ValueError(f"Unknown layer type: {layer_type}")
+            current_dim = output_dim
+        
+        self.dropout = nn.Dropout(dropout)
+        self.output = nn.Linear(current_dim, 1)
     
+    def forward(self, X):
+        for i, (layer, layer_type) in enumerate(zip(self.layers, self.layer_types)):
+            if layer_type == 'linear':
+                X = torch.relu(layer(X))
+            else:
+                gru_out, hidden = layer(X)
+                if i == self.last_gru_idx:
+                    X = hidden[-1]
+                else:
+                    X = gru_out
+            X = self.dropout(X)
+        
+        return self.output(X)
+
 class DynamicLSTM(nn.Module):
     def __init__(self, input_size, layers, dropout=0.2):
         super().__init__()
