@@ -145,3 +145,55 @@ class Environment:
         if title:
             ax.set_title(title)
         plt.show()
+
+    
+class Agent:
+    def __init__(self, width, height, num_actions=4,
+                 alpha=0.1, gamma=0.5, epsilon=0.3):
+        self.width = width
+        self.height = height
+        self.num_actions = num_actions
+        # Hyperparameters to experiment
+        self.alpha = alpha
+        self.gamma = gamma
+        self.epsilon = epsilon
+
+        self.q_table = np.zeros((width, height, num_actions), dtype=np.float64)
+
+    def reset_Q(self):
+        self.q_table = np.zeros((self.width, self.height, self.num_actions), dtype=np.float64)
+
+    def choose_action(self, state, rng=None):
+        if rng is None:
+            rng = np.random
+        x, y = state
+        # If within epsilon, do exploration
+        if rng.random() < self.epsilon:
+            return rng.randint(self.num_actions)
+        # Else we do exploitation
+        return int(np.argmax(self.q_table[x, y]))
+
+    # After training, we select the best action without exploration during the final run
+    def choose_best_action(self, state):
+        x, y = state
+        return int(np.argmax(self.q_table[x, y]))
+
+    # Update q table using SARSA 
+    def sarsa_update(self, s, a, r, s_next, a_next, done):
+        x, y = s
+        if done:
+            target = r
+        else:
+            x_new, y_new = s_next
+            target = r + self.gamma * self.q_table[x_new, y_new, a_next]
+        self.q_table[x, y, a] += self.alpha * (target - self.q_table[x, y, a])
+
+    # Update q table using Q-learning
+    def qlearning_update(self, s, a, r, s_next, done):
+        x, y = s
+        if done:
+            target = r
+        else:
+            x_new, y_new = s_next
+            target = r + self.gamma * np.max(self.q_table[x_new, y_new])
+        self.q_table[x, y, a] += self.alpha * (target - self.q_table[x, y, a])
