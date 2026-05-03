@@ -269,7 +269,8 @@ def plot_map(grid, target, title=None):
     if title:
         ax.set_title(title)
     ax.legend(loc='upper right', fontsize=8)
-    return ax
+    plt.tight_layout()
+    plt.show()
 
 #  Visualize the max q-table value for each cell
 def plot_policy_arrows(env, agent, ax=None, title=None):
