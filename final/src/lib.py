@@ -150,8 +150,7 @@ class Environment:
 
     
 class Agent:
-    def __init__(self, width, height, num_actions=4,
-                 alpha=0.1, gamma=0.5, epsilon=0.3):
+    def __init__(self, width, height, num_actions=4, alpha=0.1, gamma=0.5, epsilon=0.3):
         self.width = width
         self.height = height
         self.num_actions = num_actions

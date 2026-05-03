@@ -26,8 +26,7 @@ MAP_CONFIGS = [
         'target': (38, 10)
     },
 ]
-
-# Environment class can be found in lib.py file
+# Agent class can be found in lib.py file
 for cfg in MAP_CONFIGS:
     map_name = cfg['name']
     grid = load_bmp(cfg['path'])
@@ -35,8 +34,6 @@ for cfg in MAP_CONFIGS:
     target = cfg['target']
     env1 = Environment(grid, target)
     print(f'Environment reward strategy: {env1.reward_strategy}, target: {target}, width: {env1.width}, height: {env1.height}')
-    env1.plot(title=map_name)
-    
-    env2 = Environment(grid, target, reward_strategy='S2')
-    print(f'Environment reward strategy: {env2.reward_strategy}, target: {target}, width: {env2.width}, height: {env2.height}')
+    agent = Agent(env1.width, env1.height)
+    print(f'Initialized agent with alpha={agent.alpha}, gamma={agent.gamma}, epsilon={agent.epsilon}')
     
