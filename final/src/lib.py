@@ -70,7 +70,7 @@ class Environment:
         return self.in_bounds(x, y) and not self.is_obstacle(x, y)
 
     def free_cells(self):
-        """List of all (x, y) coordinates that are free (will be used for evaluation)."""
+        """List of all (x, y) coordinates that are free cells."""
         y, x = np.where(self.grid == 0)
         return list(zip(x.tolist(), y.tolist()))
 
@@ -128,8 +128,10 @@ class Environment:
         reward = self._reward(new_x, new_y, hit_obstacle=False, reached_goal=False)
         return (new_x, new_y), reward, False
 
-    def plot(self, title=None, path=None):
-        fig, ax = plt.subplots(figsize=(6, 6))
+    # We added the ax so that the evaluation can plot on the same axis without creating a new one
+    def plot(self, ax=None, title=None, path=None):
+        if ax is None:
+            fig, ax = plt.subplots(figsize=(6, 6))
         ax.imshow(self.grid, cmap='gray_r', origin='lower')
         
         tx, ty = self.target
@@ -144,7 +146,7 @@ class Environment:
 
         if title:
             ax.set_title(title)
-        plt.show()
+        return ax
 
     
 class Agent:
@@ -197,3 +199,189 @@ class Agent:
             x_new, y_new = s_next
             target = r + self.gamma * np.max(self.q_table[x_new, y_new])
         self.q_table[x, y, a] += self.alpha * (target - self.q_table[x, y, a])
+
+def sarsa_train(env, agent, start_state=None, num_episodes=1000, max_steps=500, verbose=True, seed=None):
+    rng = np.random.RandomState(seed)
+    free = env.free_cells()
+    if env.target in free:
+        free.remove(env.target)
+
+    rewards_per_episode = []
+    steps_per_episode = []
+
+    iterator = range(num_episodes)
+    if verbose:
+        #  This is for the progress bar
+        iterator = tqdm(iterator, desc='SARSA training')
+
+    for ep in iterator:
+        # Start random so that more states are covered during training. But if start_state is provided, use it instead.
+        if start_state is None:
+            s = free[rng.randint(len(free))]
+        else:
+            s = start_state
+
+        # Pick the FIRST action before entering the loop
+        a = agent.choose_action(s, rng=rng)
+
+        ep_reward = 0.0
+        ep_steps = 0
+
+        #  Avoid infinite loops by limiting the number of steps per episode
+        for _ in range(max_steps):
+            # Take the action
+            s_next, r, done = env.step(s, a)
+
+            if done:
+                # If done, then the episode is complete, so just update the q-table and break out of the steps loop to start the next episode
+                agent.sarsa_update(s, a, r, s_next, a_next=None, done=True)
+                ep_reward += r
+                ep_steps += 1
+                break
+
+            # Pick the next action first, then use it in the update. Since it is SARSA, we choose based on epsilon
+            a_next = agent.choose_action(s_next, rng=rng)
+            agent.sarsa_update(s, a, r, s_next, a_next, done=False)
+
+            # Update s and a for the next iteration
+            s, a = s_next, a_next
+            ep_reward += r
+            ep_steps += 1
+
+        rewards_per_episode.append(ep_reward)
+        steps_per_episode.append(ep_steps)
+
+    return rewards_per_episode, steps_per_episode
+
+
+# Plotting function
+def plot_map(grid, target, title=None):
+    fig, ax = plt.subplots(figsize=(6, 6))
+    height, width = grid.shape
+    ax.imshow(grid, cmap='gray_r', origin='lower', extent=[0, width, 0, height])
+    tx, ty = target
+    ax.plot(tx + 0.5, ty + 0.5, marker='*', color='red',
+            markersize=18, label='target')
+    ax.set_xlim(0, width)
+    ax.set_ylim(0, height)
+    ax.set_aspect('equal')
+    ax.grid(True, linewidth=0.3, alpha=0.5)
+    if title:
+        ax.set_title(title)
+    ax.legend(loc='upper right', fontsize=8)
+    return ax
+
+#  Visualize the max q-table value for each cell
+def plot_policy_arrows(env, agent, ax=None, title=None):
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(7, 7))
+    env.plot(ax=ax, title=title)        # ← now draws on the passed-in ax
+    arrow_dx = {0: -0.4, 1: 0.4, 2: 0.0, 3: 0.0}
+    arrow_dy = {0: 0.0, 1: 0.0, 2: 0.4, 3: -0.4}
+    for (x, y) in env.free_cells():
+        if (x, y) == env.target:
+            continue
+        a = agent.choose_best_action((x, y))
+        ax.arrow(x, y, arrow_dx[a], arrow_dy[a],
+                 head_width=0.2, head_length=0.15, fc='blue', ec='blue',
+                 length_includes_head=True, alpha=0.6)
+    return ax
+
+def run_the_policy(env, agent, start, max_steps=500):
+    s = tuple(start)
+    # We will trace the path taken by the policy.
+    path = [s]
+    for _ in range(max_steps):
+        # Always choose best action since this is evaluation i.e. only exploitation
+        a = agent.choose_best_action(s)
+        s_next, _, done = env.step(s, a)
+        if done:
+            path.append(s_next)
+            return path, (s_next == env.target)
+        # If the action didn't move us, the policy is stuck against a wall
+        if s_next == s:
+            return path, False
+        path.append(s_next)
+        # Detect osscillation: if we are going back and forth
+        if len(path) >= 4 and path[-1] == path[-3] and path[-2] == path[-4]:
+            return path, False
+        s = s_next
+    return path, False
+
+
+def evaluate_policy(env, agent, max_steps=500):
+    """
+    Test accuracy is the fraction of free cells from which the greedy policy
+    successfully reached the target.
+    """
+    free = env.free_cells()
+    if env.target in free:
+        free.remove(env.target)
+    if len(free) == 0:
+        return 0.0
+    successes = 0
+    for s in free:
+        _, ok = run_the_policy(env, agent, s, max_steps=max_steps)
+        if ok:
+            successes += 1
+    return successes / len(free)
+
+import matplotlib.animation as animation
+
+def animate_rollouts(env, agent, start_states, max_steps=200, interval=150, save_path=None):
+    '''This is for the animation for visualizing the paths'''
+    # Pre-calculate all paths
+    runs = []
+    for start in start_states:
+        path, success = run_the_policy(env, agent, start, max_steps=max_steps)
+        runs.append((start, path, success))
+        print(f"Start {start}: {'reached goal' if success else 'failed'} in {len(path) - 1} steps")
+
+    # Pick a different color for each run
+    colors = plt.cm.tab10(np.linspace(0, 1, max(len(runs), 1)))
+
+    # Flatten into a list of (run_index, step_index) for each frame
+    frame_plan = []
+    for ri, (_, path, _) in enumerate(runs):
+        for si in range(len(path)):
+            frame_plan.append((ri, si))
+
+    fig, ax = plt.subplots(figsize=(7, 7))
+
+    def draw_frame(frame_idx):
+        ax.clear()
+        ri, si = frame_plan[frame_idx]
+        start, path, _ = runs[ri]
+
+        # Draw the base map
+        env.plot(ax=ax, title=f"Run {ri + 1}/{len(runs)} from {start} — step {si}/{len(path) - 1}")
+
+        # Draw all previously completed runs as faded trails
+        for prev_ri in range(ri):
+            _, prev_path, _ = runs[prev_ri]
+            xs = [p[0] for p in prev_path]
+            ys = [p[1] for p in prev_path]
+            ax.plot(xs, ys, '-', color=colors[prev_ri],linewidth=2, alpha=0.4)
+            ax.plot(xs[0], ys[0], 'o', color=colors[prev_ri], markersize=8, alpha=0.5)
+
+        # Draw the current run up to this frame
+        partial = path[:si + 1]
+        xs = [p[0] for p in partial]
+        ys = [p[1] for p in partial]
+        ax.plot(xs, ys, '-', color=colors[ri], linewidth=2.5, alpha=0.9)
+        # Start as colored dot
+        ax.plot(xs[0], ys[0], 'o', color=colors[ri], markersize=10)
+        # Current position as bigger dot for visibility
+        ax.plot(xs[-1], ys[-1], 'o', color='orange', markersize=14, markeredgecolor='black', markeredgewidth=1.5)
+
+    anim = animation.FuncAnimation( fig, draw_frame, frames=len(frame_plan), interval=interval, repeat=False)
+
+    if save_path:
+        fps = max(1, 1000 // interval)
+        anim.save(save_path, writer='pillow', fps=fps)
+        print(f"Saved animation to {save_path}")
+        plt.close(fig)
+    else:
+        plt.show()
+
+    return anim
