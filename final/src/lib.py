@@ -252,6 +252,47 @@ def sarsa_train(env, agent, start_state=None, num_episodes=1000, max_steps=500, 
 
     return rewards_per_episode, steps_per_episode
 
+def qLearning_train(env, agent, start_state=None, num_episodes=1000, max_steps=500, verbose=True, seed=None, epsilon=0.3, 
+                    epsilon_start=1.0, epsilon_end=0.05, useDecay=False):
+    rng = np.random.RandomState(seed)
+    free = env.free_cells()
+    if env.target in free:
+        free.remove(env.target)
+    
+    rewards_per_episode = []
+    steps_per_episode = []
+    iterator = range(num_episodes)
+    
+    if verbose:
+        iterator = tqdm(iterator, desc='Q-Learning training')
+    
+    for ep in iterator:
+        if(useDecay):
+            agent.epsilon = max(epsilon_end, epsilon_start - (epsilon_start - epsilon_end) * ep / num_episodes)
+        if start_state is None:
+            s = free[rng.randint(len(free))]
+        else:
+            s = start_state
+
+        ep_reward = 0.0
+        ep_steps = 0
+        
+        for _ in range(max_steps):
+            a = agent.choose_action(s, rng=rng)
+            s_next, r, done = env.step(s, a)
+            agent.qlearning_update(s, a, r, s_next, done)
+            
+            ep_reward += r
+            ep_steps += 1
+            s = s_next
+            
+            if done:
+                break
+
+        rewards_per_episode.append(ep_reward)
+        steps_per_episode.append(ep_steps)
+    return rewards_per_episode, steps_per_episode
+    
 
 # Plotting function
 def plot_map(grid, target, title=None):
