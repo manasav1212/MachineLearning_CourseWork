@@ -275,7 +275,7 @@ def sarsa_train(env, agent, start_state=None, num_episodes=1000, max_steps=500, 
 
     return rewards_per_episode, steps_per_episode
 
-def qLearning_train(env, agent, start_state=None, num_episodes=1000, max_steps=500, verbose=True, seed=None, epsilon_start=1.0, epsilon_end=0.05, useDecay=False):
+def qLearning_train(env, agent, start_state=None, num_episodes=1000, max_steps=500, verbose=True, seed=None):
     rng = np.random.RandomState(seed)
     free = env.free_cells()
     if env.target in free:
@@ -289,8 +289,6 @@ def qLearning_train(env, agent, start_state=None, num_episodes=1000, max_steps=5
         iterator = tqdm(iterator, desc='Q-Learning training')
     
     for ep in iterator:
-        if(useDecay):
-            agent.epsilon = max(epsilon_end, epsilon_start - (epsilon_start - epsilon_end) * ep / num_episodes)
         if start_state is None:
             s = free[rng.randint(len(free))]
         else:
