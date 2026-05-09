@@ -89,26 +89,8 @@ for (map_name, strategy), data in results.items():
     acc = evaluate_policy(env, agent, max_steps=MAX_STEPS)
     print(f"  Test accuracy: {acc * 100:.2f}%")
 
-    # Learning curve + policy arrows. Uncomment for the graphs.
-    # fig, axes = plt.subplots(1, 2, figsize=(14, 6))
-
-    # axes[0].plot(rewards, alpha=0.3, label='per-episode')
-    # window = 50
-    
-    # if len(rewards) >= window:
-    #     rolling = np.convolve(rewards, np.ones(window) / window, mode='valid')
-    #     axes[0].plot(np.arange(window - 1, len(rewards)), rolling, label=f'{window}-ep rolling mean')
-    
-    # axes[0].set_xlabel('Episode')
-    # axes[0].set_ylabel('Total reward')
-    # axes[0].set_title(f'SARSA learning curve — {label}')
-    # axes[0].legend()
-    # axes[0].grid(alpha=0.3)
-
+    # policy arrows. Uncomment for the graphs.
     # plot_policy_arrows(env, agent, ax=axes[1], title=f'SARSA policy — {label} (acc = {acc * 100:.1f}%)')
-
-    # plt.tight_layout()
-    # plt.show()
 
     # Visualize the paths from this map's specific starting positions
     print(f"  Animating rollouts from {len(start_positions)} starting positions...")
