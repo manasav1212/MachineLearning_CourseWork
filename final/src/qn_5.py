@@ -95,4 +95,4 @@ for (map_name, strategy), data in results.items():
     print(f"  Test accuracy: {acc * 100:.2f}%")    
 
     print(f"  Animating rollouts from {len(start_positions)} starting positions...")
-    anim = animate_rollouts(env, agent, start_positions, max_steps=MAX_STEPS, interval=1)
+    anim = animate_rollouts(env, agent, start_positions, max_steps=MAX_STEPS, interval=1, title=f"Q-Learning {map_name} Strategy:{strategy}")
