@@ -18,6 +18,7 @@ ACTION_POSITION_CHANGES = {
 def load_bmp(path):
     img = Image.open(path).convert('L')
     arr = np.array(img)
+    # Pixels darker than 128 are obstacles (1), brighter are free (0)
     grid = (arr < 128).astype(np.int8)
     return grid
 
@@ -30,8 +31,10 @@ def abstract_map(grid, abs_size):
 
     abstraction = np.zeros((abs_size, abs_size), dtype=np.int8)
 
+    # Iterate over every cell of the grid
     for i in range(abs_size):
         for j in range(abs_size):
+            # Compute the bounds of the original-pixel block that maps to (i, j)
             r_start = i * x_block
             c_start = j * y_block
             # Add remaining pixels to the last block
@@ -43,27 +46,28 @@ def abstract_map(grid, abs_size):
             if block.any():
                 abstraction[i, j] = 1
 
-    # Flip it for visuals and more intuitive (x, y) indexing
+    # Flip it vertically for visuals and more intuitive (x, y) plotting
     return np.flipud(abstraction)
 
 class Environment:
     
     def __init__(self, grid, target, reward_strategy='S1'):
         self.grid = grid
+        # numpy (rows, cols) = (height, width)
         self.height, self.width = grid.shape
         self.target = tuple(target)
         assert reward_strategy in ('S1', 'S2', 'S3'), "reward_strategy must be 'S1' or 'S2' or 'S3'"
         self.reward_strategy = reward_strategy
 
-        # Validate that the target is on a free cell within boundary
         tx, ty = self.target
         assert 0 <= tx < self.width and 0 <= ty < self.height, "target out of bounds"
-        assert self.grid[ty, tx] == 0, "target must be on a free cell"
+        assert self.grid[ty, tx] == 0, "Target must be on a free cell"
 
     def in_bounds(self, x, y):
         return 0 <= x < self.width and 0 <= y < self.height
 
     def is_obstacle(self, x, y):
+        # Note: grid is indexed [y, x], not [x, y]
         return self.grid[y, x] == 1
 
     def is_free(self, x, y):
@@ -83,6 +87,8 @@ class Environment:
             return 100.0
         if hit_obstacle:
             return -100.0
+        # No information for non-terminal moves: agent must learn purely from the
+        # +100 / -100 signals.
         return 0.0
 
     def _reward_S2(self, x, y, hit_obstacle, reached_goal):
@@ -96,12 +102,12 @@ class Environment:
             return 100.0
         if hit_obstacle:
             return -100.0
-        # Block distance to goal
+        # Manhattan distance to goal
         tx, ty = self.target
         dist = abs(x - tx) + abs(y - ty)
         max_dist = self.width + self.height
-        # Per-step cost is -1, plus a small bonus that grows as we approach goal. But the reward is always negative
-        return -1.0 + (1.0 - dist / max_dist)
+        # cells far from goal get values near -1. Closer gets near 0.
+        return -dist / max_dist
     
     def _reward_S3(self, x, y, hit_obstacle, reached_goal):
         """Step-penalty strategy: encourages shorter paths."""
@@ -109,6 +115,7 @@ class Environment:
             return 100.0
         if hit_obstacle:
             return -100.0
+        # Constant penalty per step
         return -1.0
 
     def _reward(self, x, y, hit_obstacle, reached_goal):
@@ -124,17 +131,18 @@ class Environment:
         x_change, y_change = ACTION_POSITION_CHANGES[action]
         new_x, new_y = x + x_change, y + y_change
 
-        # Out of bounds or it hit the obstacle.
+        # Case 1: the move would go out of bounds or into an obstacle.
+        # Agent stays in place, gets the obstacle penalty, but episode does NOT end.
         if (not self.in_bounds(new_x, new_y)) or self.is_obstacle(new_x, new_y):
             reward = self._reward(x, y, hit_obstacle=True, reached_goal=False)
             return (x, y), reward, False
 
-        # Reached the goal.
+        # Case 2: the action lands on the target. Episode will end here.
         if (new_x, new_y) == self.target:
             reward = self._reward(new_x, new_y, hit_obstacle=False, reached_goal=True)
             return (new_x, new_y), reward, True
 
-        # Other free cell. Depends on the reward strategy
+        # Case 3: Normal action into a free cell.
         reward = self._reward(new_x, new_y, hit_obstacle=False, reached_goal=False)
         return (new_x, new_y), reward, False
 
@@ -144,9 +152,11 @@ class Environment:
             fig, ax = plt.subplots(figsize=(6, 6))
         ax.imshow(self.grid, cmap='gray_r', origin='lower')
         
+        # Draw the target as a red star
         tx, ty = self.target
         ax.plot(tx, ty, marker='*', color='red', markersize=18, label='target')
 
+        # Plot the path
         if path:
             xs = [p[0] for p in path]
             ys = [p[1] for p in path]
@@ -168,7 +178,7 @@ class Agent:
         self.alpha = alpha
         self.gamma = gamma
         self.epsilon = epsilon
-
+        # Initialized to zero
         self.q_table = np.zeros((width, height, num_actions), dtype=np.float64)
 
     def reset_Q(self):
@@ -181,7 +191,7 @@ class Agent:
         # If within epsilon, do exploration
         if rng.random() < self.epsilon:
             return rng.randint(self.num_actions)
-        # Else we do exploitation
+        # Otherwise, pick the action with the highest current Q-value
         return int(np.argmax(self.q_table[x, y]))
 
     # After training, we select the best action without exploration during the final run
@@ -197,6 +207,7 @@ class Agent:
         else:
             x_new, y_new = s_next
             target = r + self.gamma * self.q_table[x_new, y_new, a_next]
+        # Update the Q-table
         self.q_table[x, y, a] += self.alpha * (target - self.q_table[x, y, a])
 
     # Update q table using Q-learning
@@ -206,11 +217,13 @@ class Agent:
             target = r
         else:
             x_new, y_new = s_next
+            # The max is what makes this off-policy
             target = r + self.gamma * np.max(self.q_table[x_new, y_new])
         self.q_table[x, y, a] += self.alpha * (target - self.q_table[x, y, a])
 
 def sarsa_train(env, agent, start_state=None, num_episodes=1000, max_steps=500, verbose=True, seed=None):
     rng = np.random.RandomState(seed)
+    # Get all free cells, used for random episode starts
     free = env.free_cells()
     if env.target in free:
         free.remove(env.target)
@@ -307,8 +320,10 @@ def qLearning_train(env, agent, start_state=None, num_episodes=1000, max_steps=5
 def plot_map(grid, target, title=None):
     fig, ax = plt.subplots(figsize=(6, 6))
     height, width = grid.shape
+    # extent makes the axis labels match cell coordinates (0..width, 0..height)
     ax.imshow(grid, cmap='gray_r', origin='lower', extent=[0, width, 0, height])
     tx, ty = target
+    # +0.5 centers the marker inside the cell when extent is used
     ax.plot(tx + 0.5, ty + 0.5, marker='*', color='red',
             markersize=18, label='target')
     ax.set_xlim(0, width)
@@ -325,10 +340,12 @@ def plot_map(grid, target, title=None):
 def plot_policy_arrows(env, agent, ax=None, title=None):
     if ax is None:
         fig, ax = plt.subplots(figsize=(7, 7))
-    env.plot(ax=ax, title=title)        # ← now draws on the passed-in ax
+    # Draw the map underneath the arrows
+    env.plot(ax=ax, title=title)
     arrow_dx = {0: -0.4, 1: 0.4, 2: 0.0, 3: 0.0}
     arrow_dy = {0: 0.0, 1: 0.0, 2: 0.4, 3: -0.4}
     for (x, y) in env.free_cells():
+        # Skip the arrow for target cell
         if (x, y) == env.target:
             continue
         a = agent.choose_best_action((x, y))
@@ -398,9 +415,11 @@ def animate_rollouts(env, agent, start_states, max_steps=200, interval=150, save
 
     fig, ax = plt.subplots(figsize=(7, 7))
     if title:
+        # Title
         fig.suptitle(title, fontsize=14, fontweight='bold')
 
     def draw_frame(frame_idx):
+        # Wipe the previous frame and redraw from scratch each time
         ax.clear()
         ri, si = frame_plan[frame_idx]
         start, path, _ = runs[ri]
