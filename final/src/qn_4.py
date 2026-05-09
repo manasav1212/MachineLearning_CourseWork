@@ -94,4 +94,4 @@ for (map_name, strategy), data in results.items():
 
     # Visualize the paths from this map's specific starting positions
     print(f"  Animating rollouts from {len(start_positions)} starting positions...")
-    anim = animate_rollouts(env, agent, start_positions, max_steps=MAX_STEPS, interval=1)
+    anim = animate_rollouts(env, agent, start_positions, max_steps=MAX_STEPS, interval=1, title=f"SARSA {map_name} Strategy:{strategy}")
