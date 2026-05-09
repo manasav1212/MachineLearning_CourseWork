@@ -43,7 +43,7 @@ MAP_CONFIGS = [
     },
 ]
 
-REWARD_STRATEGIES = ['S1', 'S2']
+REWARD_STRATEGIES = ['S1', 'S2', 'S3']
 
 results = {}
 
@@ -66,8 +66,7 @@ for cfg in MAP_CONFIGS:
         agent = Agent(env.width, env.height, alpha=ALPHA, gamma=GAMMA, epsilon=EPSILON)
         
         t0 = time.time()
-        rewards, steps = qLearning_train(env, agent, start_state=None, num_episodes=NUM_EPISODES, max_steps=MAX_STEPS, seed=SEED, 
-                                         epsilon=EPSILON, epsilon_start = EPSILON_START, epsilon_end = EPSILON_END, useDecay=False)
+        rewards, steps = qLearning_train(env, agent, start_state=None, num_episodes=NUM_EPISODES, max_steps=MAX_STEPS, seed=SEED)
         elapsed = time.time() - t0
         
         print(f"  training time:           {elapsed:.2f} s")

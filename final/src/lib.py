@@ -52,7 +52,7 @@ class Environment:
         self.grid = grid
         self.height, self.width = grid.shape
         self.target = tuple(target)
-        assert reward_strategy in ('S1', 'S2'), "reward_strategy must be 'S1' or 'S2'"
+        assert reward_strategy in ('S1', 'S2', 'S3'), "reward_strategy must be 'S1' or 'S2' or 'S3'"
         self.reward_strategy = reward_strategy
 
         # Validate that the target is on a free cell within boundary
@@ -89,7 +89,7 @@ class Environment:
         """
         S2 strategy.
         Big positive at goal, big negative at obstacle.
-        Small per-step penalty which would mean shorter path is better.
+        Small -1 per-step penalty which would mean shorter path is better.
         Distance-based: closer to goal = less penalty.
         """
         if reached_goal:
@@ -102,12 +102,22 @@ class Environment:
         max_dist = self.width + self.height
         # Per-step cost is -1, plus a small bonus that grows as we approach goal. But the reward is always negative
         return -1.0 + (1.0 - dist / max_dist)
+    
+    def _reward_S3(self, x, y, hit_obstacle, reached_goal):
+        """Step-penalty strategy: encourages shorter paths."""
+        if reached_goal:
+            return 100.0
+        if hit_obstacle:
+            return -100.0
+        return -1.0
 
     def _reward(self, x, y, hit_obstacle, reached_goal):
         if self.reward_strategy == 'S1':
             return self._reward_S1(x, y, hit_obstacle, reached_goal)
-        else:
+        elif self.reward_strategy == 'S2':
             return self._reward_S2(x, y, hit_obstacle, reached_goal)
+        else:
+            return self._reward_S3(x, y, hit_obstacle, reached_goal)
 
     def step(self, state, action):
         x, y = state
@@ -252,8 +262,7 @@ def sarsa_train(env, agent, start_state=None, num_episodes=1000, max_steps=500, 
 
     return rewards_per_episode, steps_per_episode
 
-def qLearning_train(env, agent, start_state=None, num_episodes=1000, max_steps=500, verbose=True, seed=None, epsilon=0.3, 
-                    epsilon_start=1.0, epsilon_end=0.05, useDecay=False):
+def qLearning_train(env, agent, start_state=None, num_episodes=1000, max_steps=500, verbose=True, seed=None, epsilon_start=1.0, epsilon_end=0.05, useDecay=False):
     rng = np.random.RandomState(seed)
     free = env.free_cells()
     if env.target in free:
@@ -369,7 +378,7 @@ def evaluate_policy(env, agent, max_steps=500):
 
 import matplotlib.animation as animation
 
-def animate_rollouts(env, agent, start_states, max_steps=200, interval=150, save_path=None):
+def animate_rollouts(env, agent, start_states, max_steps=200, interval=150, save_path=None, title=None):
     '''This is for the animation for visualizing the paths'''
     # Pre-calculate all paths
     runs = []
@@ -388,6 +397,8 @@ def animate_rollouts(env, agent, start_states, max_steps=200, interval=150, save
             frame_plan.append((ri, si))
 
     fig, ax = plt.subplots(figsize=(7, 7))
+    if title:
+        fig.suptitle(title, fontsize=14, fontweight='bold')
 
     def draw_frame(frame_idx):
         ax.clear()

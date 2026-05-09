@@ -39,7 +39,7 @@ MAP_CONFIGS = [
     },
 ]
 
-REWARD_STRATEGIES = ['S1', 'S2']
+REWARD_STRATEGIES = ['S1', 'S2', 'S3']
 
 results = {}
 

@@ -32,14 +32,14 @@ MAP_CONFIGS = [
 
 ABS_SIZE = 40
 ALPHA = 0.1
-NUM_EPISODES = 2000
+NUM_EPISODES = 10000
 MAX_STEPS = 500
 SEED = 0
 
 # Default hyperparameters
 DEFAULT_GAMMA = 0.5
 DEFAULT_EPSILON = 0.5
-DEFAULT_REWARD = 'S1'
+DEFAULT_REWARD = 'S2'
 
 # Map 4 is used for comparison B, C, D
 MAP4_INDEX = 3
@@ -51,7 +51,7 @@ def build_env(map_cfg, reward_strategy):
     return Environment(grid, target=map_cfg['target'], reward_strategy=reward_strategy)
 
 
-def run_one(map_cfg, policy_type, alpha, gamma, epsilon, reward, num_episodes=NUM_EPISODES, seed=SEED):
+def run_one(map_cfg, policy_type, alpha, gamma, epsilon, reward, num_episodes=NUM_EPISODES, seed=SEED, animate=False):
     """Run one experiment and return a dict of metrics."""
     env = build_env(map_cfg, reward)
     agent = Agent(env.width, env.height, num_actions=4, alpha=alpha, gamma=gamma, epsilon=epsilon)
@@ -60,13 +60,17 @@ def run_one(map_cfg, policy_type, alpha, gamma, epsilon, reward, num_episodes=NU
         training_fxn = sarsa_train
     # Replace with 'Q-learning' training function. Assuming the function structure is similar to sarsa_train 
     else:
-        training_fxn = sarsa_train
+        training_fxn = qLearning_train
 
     start = time.perf_counter()
     rewards, steps = training_fxn(env, agent, start_state=None, num_episodes=num_episodes, max_steps=MAX_STEPS, seed=seed, verbose=False)
     time_elapsed = time.perf_counter() - start
 
     acc = evaluate_policy(env, agent, max_steps=MAX_STEPS)
+    
+    if animate:
+        title = (f"{policy_type} — {map_cfg['name']} gamma = {gamma}, epsilon = {epsilon}, reward={reward}, acc={acc*100:.1f}%)")
+        animate_rollouts(env, agent, start_states=map_cfg['start_positions'], max_steps=MAX_STEPS, interval=1, title=title)
 
     return {
         'policy_type': policy_type,
@@ -94,13 +98,13 @@ def print_table(rows, columns, title):
     print(df.to_string(index=False))
 
 
-def compare_map_complexity():
+def compare_map_complexity(animate=False):
     print("Map Complexity comparison")
     rows = []
     for algo in ('SARSA', 'Q-learning'):
         for map_cfg in MAP_CONFIGS:
             print(f"  Running {algo} on {map_cfg['name']}")
-            r = run_one(map_cfg, algo, ALPHA, DEFAULT_GAMMA, DEFAULT_EPSILON, DEFAULT_REWARD)
+            r = run_one(map_cfg, algo, ALPHA, DEFAULT_GAMMA, DEFAULT_EPSILON, DEFAULT_REWARD, animate=animate)
             rows.append(r)
     print_table(rows, ['policy_type', 'map', 'time_s', 'episodes', 'accuracy', 'final_avg_reward'],
                 f' Map Complexity (gamma={DEFAULT_GAMMA}, epsilon={DEFAULT_EPSILON}, reward_strategy={DEFAULT_REWARD})'
@@ -108,14 +112,14 @@ def compare_map_complexity():
     return rows
 
 
-def compare_exploration():
+def compare_exploration(animate=False):
     map_cfg = MAP_CONFIGS[MAP4_INDEX]
     print(f"Exploration Rate comparison ({map_cfg['name']}, gamma ={DEFAULT_GAMMA})")
     rows = []
     for policy in ('SARSA', 'Q-learning'):
         for eps in (0.0, 0.5, 1.0):
             print(f"  Running {policy} with epsilon ={eps}")
-            r = run_one(map_cfg, policy, ALPHA, DEFAULT_GAMMA, eps, DEFAULT_REWARD)
+            r = run_one(map_cfg, policy, ALPHA, DEFAULT_GAMMA, eps, DEFAULT_REWARD, animate=animate)
             rows.append(r)
     print_table(rows, ['policy_type', 'epsilon', 'time_s', 'episodes', 'accuracy', 'final_avg_reward'],
                 f'Exploration Rate ({map_cfg["name"]}, gamma={DEFAULT_GAMMA}, reward={DEFAULT_REWARD})'
@@ -123,14 +127,14 @@ def compare_exploration():
     return rows
 
 
-def compare_discount_values():
+def compare_discount_values(animate=False):
     map_cfg = MAP_CONFIGS[MAP4_INDEX]
     print(f"Discount Value comparison ({map_cfg['name']}, epsilon={DEFAULT_EPSILON})")
     rows = []
     for algo in ('SARSA', 'Q-learning'):
         for gamma in (0.1, 0.5, 1.0):
             print(f"  Running {algo} with gamma ={gamma}")
-            r = run_one(map_cfg, algo, ALPHA, gamma, DEFAULT_EPSILON, DEFAULT_REWARD)
+            r = run_one(map_cfg, algo, ALPHA, gamma, DEFAULT_EPSILON, DEFAULT_REWARD, animate=animate)
             rows.append(r)
     print_table(rows, ['policy_type', 'gamma', 'time_s', 'episodes', 'accuracy', 'final_avg_reward'],
                 f'Discount Value ({map_cfg["name"]}, epsilon={DEFAULT_EPSILON}, reward={DEFAULT_REWARD})')
@@ -149,7 +153,7 @@ def best_hyperparams(rows_B, rows_C, policy_type):
     return best_eps_row['epsilon'], best_gamma_row['gamma']
 
 
-def compare_reward_strategies(rows_B, rows_C):
+def compare_reward_strategies(rows_B, rows_C, animate=False):
     map_cfg = MAP_CONFIGS[MAP4_INDEX]
     print(f"Reward Strategy comparison ({map_cfg['name']}, best epsilon & gamma per algorithm)")
     rows = []
@@ -158,14 +162,15 @@ def compare_reward_strategies(rows_B, rows_C):
         print(f"  {policy_type}: best epsilon={eps}, best gamma ={gamma}")
         for reward in ('S1', 'S2'):
             print(f"Running {policy_type} with reward={reward}")
-            r = run_one(map_cfg, policy_type, ALPHA, gamma, eps, reward)
+            r = run_one(map_cfg, policy_type, ALPHA, gamma, eps, reward, animate=animate)
             rows.append(r)
     print_table(rows, ['policy_type', 'epsilon', 'gamma', 'reward', 'time_s', 'episodes', 'accuracy', 'final_avg_reward'],
                 f'Reward Strategy ({map_cfg["name"]}, best epsilon & gamma per algorithm)')
     return rows
 
 
-rows_A = compare_map_complexity()
-rows_B = compare_exploration()
-rows_C = compare_discount_values()
-rows_D = compare_reward_strategies(rows_B, rows_C)
+#  Change animate = True to visualize the test runs
+rows_A = compare_map_complexity(animate=False)
+rows_B = compare_exploration(animate=False)
+rows_C = compare_discount_values(animate=False)
+rows_D = compare_reward_strategies(rows_B, rows_C, animate=False)
